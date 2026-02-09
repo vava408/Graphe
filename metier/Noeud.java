@@ -1,5 +1,6 @@
 package metier;
 
-public class Noeud {
+public class Noeud
+{
 	
 }
