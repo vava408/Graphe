@@ -1,22 +1,33 @@
 package metier;
 
-import java.util.HashMap;
-
-public class Arc
+/**
+ * Représente un arc dirigé depuis un noeud vers une destination, avec un poids.
+ */
+public class Arc 
 {
-	private Noeud sommetEntant, sommetSortant;
-	private int poid;
 
-	public Arc(Noeud sommetEntant, Noeud sommetSortant, int poid)
-	{
-		this.sommetEntant = sommetEntant;
-		this.sommetSortant = sommetSortant;
-		this.poid    = poid;
-		
-	}
+    private final Noeud destination;
+    private final int poids;
 
-	public Noeud getSommetEntrant()
-	{
-		return this.sommetEntant;
-	}
+    public Arc(Noeud destination, int poids) 
+    {
+        this.destination = destination;
+        this.poids = poids;
+    }
+
+    public Noeud getDestination() 
+    {
+        return this.destination;
+    }
+
+    public int getPoids() 
+    {
+        return this.poids;
+    }
+
+    @Override
+    public String toString() 
+    {
+        return "-> " + destination.getNom() + " (poids: " + poids + ")";
+    }
 }
