@@ -9,13 +9,13 @@ import java.util.*;
 public class Dijkstra implements IAlgorithme 
  {
 
-    @Override
+
     public String getNom() 
     {
         return "Dijkstra";
     }
 
-    @Override
+
     public Resultat calculer(Graphe graphe, String nomSource) 
     {
         Noeud source = graphe.getNoeud(nomSource);

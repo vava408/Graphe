@@ -10,13 +10,13 @@ import java.util.*;
 public class BellmanFord implements IAlgorithme 
 {
 
-    @Override
+   
     public String getNom() 
     {
         return "Bellman-Ford";
     }
 
-    @Override
+
     public Resultat calculer(Graphe graphe, String nomSource) 
     {
         Noeud source = graphe.getNoeud(nomSource);
