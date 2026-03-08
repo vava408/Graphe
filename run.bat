@@ -1,5 +1,5 @@
-javac @compile.list -d class
+javac -encoding UTF-8 @compile.list -d class
 
 cd class
 
-java Mainùù
+java Main

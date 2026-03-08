@@ -1,27 +1,36 @@
 package vue;
 
+import metier.BellmanFord;
+import metier.Dijkstra;
+import metier.Graphe;
+import metier.IAlgorithme;
+import metier.Noeud;
+import metier.Resultat;
+
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 
 public class PanelTableau extends JPanel
 {
     private final DefaultTableModel model;
     private final JTable table;
-    private final List<String> noeuds;
+    private final JComboBox<String> cbPointDepart;
+    private final JComboBox<String> cbAlgorithme;
+    private final JCheckBox cbOriente;
 
     public PanelTableau()
     {
-        this.noeuds = new ArrayList<>();
 
         this.setLayout(new BorderLayout(8, 8));
         this.setBorder(BorderFactory.createTitledBorder("Saisie des arcs"));
 
         this.model = new DefaultTableModel(new Object[]{"Source", "Destination", "Poids"}, 0)
         {
-            @Override
             public boolean isCellEditable(int row, int column)
             {
                 return true;
@@ -32,24 +41,28 @@ public class PanelTableau extends JPanel
         this.table.setFillsViewportHeight(true);
         this.add(new JScrollPane(table), BorderLayout.CENTER);
 
-        // Zone boutons: 2 lignes x 3 colonnes => tout visible
-        JPanel panelActions = new JPanel(new GridLayout(2, 3, 8, 8));
+        JPanel panelActions = new JPanel(new GridLayout(3, 3, 8, 8));
         panelActions.setBorder(BorderFactory.createEmptyBorder(6, 6, 6, 6));
-        panelActions.setPreferredSize(new Dimension(10, 95));
+        panelActions.setPreferredSize(new Dimension(10, 130));
 
         JButton btnAjouter = new JButton("+ Ligne");
         JButton btnSupprimer = new JButton("- Ligne");
-        JCheckBox cbOriente = new JCheckBox("Orienté");
-        JButton btnDijkstra = new JButton("Dijkstra");
-        JButton btnBellmanFord = new JButton("Bellman-Ford");
+        this.cbOriente = new JCheckBox("Orienté");
+        this.cbAlgorithme = new JComboBox<>(new String[]{"Dijkstra", "Bellman-Ford"});
+        this.cbPointDepart = new JComboBox<>();
+        this.cbPointDepart.setEditable(true);
+        JButton btnCalculer = new JButton("Calculer");
         JButton btnVider = new JButton("Vider");
 
         panelActions.add(btnAjouter);
         panelActions.add(btnSupprimer);
-        panelActions.add(cbOriente);
-        panelActions.add(btnDijkstra);
-        panelActions.add(btnBellmanFord);
         panelActions.add(btnVider);
+        panelActions.add(new JLabel("Algorithme"));
+        panelActions.add(cbAlgorithme);
+        panelActions.add(cbOriente);
+        panelActions.add(new JLabel("Point de départ"));
+        panelActions.add(cbPointDepart);
+        panelActions.add(btnCalculer);
 
         this.add(panelActions, BorderLayout.SOUTH);
 
@@ -59,11 +72,14 @@ public class PanelTableau extends JPanel
             if (row >= 0) model.removeRow(row);
         });
 
-		btnDijkstra.addActionListener(e -> {});
-		btnBellmanFord.addActionListener(e -> {});
-		cbOriente.addActionListener(e -> {});
+        //btnCalculer.addActionListener(e -> );
 
-        btnVider.addActionListener(e -> model.setRowCount(0));
+        btnVider.addActionListener(e -> {
+            model.setRowCount(0);
+            
+        });
+
+        //model.addTableModelListener(e -> );
 
         model.addRow(new Object[]{"", "", ""});
     }
@@ -78,4 +94,5 @@ public class PanelTableau extends JPanel
         Object v = model.getValueAt(row, col);
         return v == null ? "" : v.toString().trim();
     }
+
 }
