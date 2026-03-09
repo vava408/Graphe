@@ -36,7 +36,6 @@ public class VueConsole implements IVue
     @Override
     public int demanderChoixAlgorithme(List<String> algorithmes) 
     {
-		this.frame  = new Frame();
         System.out.println("\n=== Choix de l'algorithme ===");
         for (int i = 0; i < algorithmes.size(); i++) 
         {

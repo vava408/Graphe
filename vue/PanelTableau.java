@@ -21,9 +21,9 @@ public class PanelTableau extends JPanel
     private final JCheckBox cbOriente;
 	private Controller controller;
 
-    public PanelTableau()
+    public PanelTableau(Controller controller)
     {
-
+		this.controller = controller;
         this.setLayout(new BorderLayout(8, 8));
         this.setBorder(BorderFactory.createTitledBorder("Saisie des arcs"));
 

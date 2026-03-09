@@ -1,6 +1,7 @@
 package controller;
 
 import metier.*;
+import vue.Frame;
 import vue.IVue;
 
 import java.util.ArrayList;
@@ -17,6 +18,7 @@ public class Controller implements IController
     private final IVue vue;
     private Graphe graphe;
     private IAlgorithme algorithme;
+	private Frame frame;
 
     // Liste des algorithmes disponibles dans l'application
     private final List<IAlgorithme> algorithmesDisponibles;
@@ -25,6 +27,7 @@ public class Controller implements IController
     {
         this.vue    = vue;
         this.graphe = new Graphe();
+		this.frame  = new Frame(this);
 
         // asList crée une list non modifiable
         this.algorithmesDisponibles = Arrays.asList(new Dijkstra(), new BellmanFord());
