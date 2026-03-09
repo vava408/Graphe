@@ -1,19 +1,15 @@
 package vue;
 
-import metier.BellmanFord;
-import metier.Dijkstra;
-import metier.Graphe;
-import metier.IAlgorithme;
-import metier.Noeud;
-import metier.Resultat;
+
 
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;
-import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
-import java.util.List;
 import java.util.Set;
+
+
 
 public class PanelTableau extends JPanel
 {
@@ -79,7 +75,7 @@ public class PanelTableau extends JPanel
             
         });
 
-        //model.addTableModelListener(e -> );
+        model.addTableModelListener(e -> this.remplirPointDepart());
 
         model.addRow(new Object[]{"", "", ""});
     }
@@ -94,5 +90,33 @@ public class PanelTableau extends JPanel
         Object v = model.getValueAt(row, col);
         return v == null ? "" : v.toString().trim();
     }
+
+	private void remplirPointDepart()
+	{
+		 Set<String> points = new LinkedHashSet<>();
+
+		for (int cpt = 0; model.getRowCount() > cpt; cpt++)
+		{
+			String source = (String)(model.getValueAt(cpt, 0));
+			String destination = (String) (model.getValueAt(cpt, 1));
+			
+			if (!source.isEmpty()) {
+				points.add(source);
+			}
+
+			if (!destination.isEmpty())
+			{
+				points.add(destination);
+			}
+		}
+
+		cbPointDepart.removeAllItems();
+
+		for (String p : points)
+		{
+			cbPointDepart.addItem(p);
+		}
+		repaint();
+	}
 
 }
