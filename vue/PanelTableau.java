@@ -1,13 +1,14 @@
 package vue;
 
-
+import controller.Controller; 
 
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
-import java.awt.*;
-import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
-import java.util.Set;
+
+import java.awt.BorderLayout;
+import java.awt.Dimension;
+import java.awt.GridLayout;
+import java.util.*;
 
 
 
@@ -18,6 +19,7 @@ public class PanelTableau extends JPanel
     private final JComboBox<String> cbPointDepart;
     private final JComboBox<String> cbAlgorithme;
     private final JCheckBox cbOriente;
+	private Controller controller;
 
     public PanelTableau()
     {
@@ -68,7 +70,7 @@ public class PanelTableau extends JPanel
             if (row >= 0) model.removeRow(row);
         });
 
-        //btnCalculer.addActionListener(e -> );
+        btnCalculer.addActionListener(e -> this.creerGraphe());
 
         btnVider.addActionListener(e -> {
             model.setRowCount(0);
@@ -93,22 +95,7 @@ public class PanelTableau extends JPanel
 
 	private void remplirPointDepart()
 	{
-		 Set<String> points = new LinkedHashSet<>();
-
-		for (int cpt = 0; model.getRowCount() > cpt; cpt++)
-		{
-			String source = (String)(model.getValueAt(cpt, 0));
-			String destination = (String) (model.getValueAt(cpt, 1));
-			
-			if (!source.isEmpty()) {
-				points.add(source);
-			}
-
-			if (!destination.isEmpty())
-			{
-				points.add(destination);
-			}
-		}
+		Set<String> points = getNoeud();
 
 		cbPointDepart.removeAllItems();
 
@@ -116,7 +103,56 @@ public class PanelTableau extends JPanel
 		{
 			cbPointDepart.addItem(p);
 		}
+
 		repaint();
 	}
+
+	public void creerGraphe()
+	{
+		Set<String> noeud = getNoeud();
+		List<String> lstNoeud = new ArrayList<>();
+
+		for (String string : noeud)
+		{
+			lstNoeud.add(string);
+		}
+
+		controller.creerNoeuds(lstNoeud);
+
+		for(int cpt = 0 ; model.getRowCount() < cpt; cpt++)
+		{
+			String source = (String)model.getValueAt(cpt, 0);
+			String destination = (String) model.getValueAt(cpt, 1);
+			int poid = (int) model.getValueAt(cpt, 2);
+
+			controller.ajouterArc(source,destination, poid);
+		}
+
+		String pointDepart = (String)cbPointDepart.getSelectedItem();
+		System.out.println(pointDepart);
+
+		//controller.lancerCalcul(pointDepart);
+
+	}
+
+	private Set<String> getNoeud()
+	{
+		Set<String> points = new LinkedHashSet<>();
+
+		for (int cpt = 0; cpt < model.getRowCount(); cpt++)
+		{
+			String source = valeur(cpt, 0);
+			String destination = valeur(cpt, 1);
+
+			if (!source.isEmpty())
+				points.add(source);
+
+			if (!destination.isEmpty())
+				points.add(destination);
+		}
+
+		return points;
+	}
+	
 
 }
