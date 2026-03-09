@@ -160,7 +160,21 @@ public class PanelTableau extends JPanel
 		String pointDepart = (String) cbPointDepart.getSelectedItem();
 		System.out.println(pointDepart);
 
-		controller.lancerCalcul(pointDepart);
+		String algo = (String)cbAlgorithme.getSelectedItem();
+		int algoInt = 2;
+		
+		if("Dijkstra".equals(algo))
+		{
+			algoInt = 0;
+		}
+		else if ("Bellman-Ford".equals(algo))
+		{
+			algoInt = 1;
+		}
+
+		boolean estOrienter = this.cbOriente.isSelected();
+
+		controller.lancerCalcul(pointDepart, algoInt, estOrienter);
 	}
 
 	private Set<String> getNoeud()
