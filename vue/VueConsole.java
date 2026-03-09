@@ -10,7 +10,7 @@ import java.util.*;
  * Implémente IVue → peut être remplacée par n'importe quelle autre vue (Swing, web…)
  * sans modifier une seule ligne du contrôleur ou du modèle.
  */
-public class VueConsole implements IVue 
+public class VueConsole
 {
 
     private final Scanner scanner;
@@ -21,19 +21,18 @@ public class VueConsole implements IVue
         this.scanner = new Scanner(System.in);
     }
 
-    @Override
-    public void afficherMessage(String message) 
+   
+    public void afficherMessageConsole(String message) 
     {
         System.out.println("[INFO] " + message);
     }
 
-    @Override
-    public void afficherErreur(String erreur) 
+
+    public void afficherErreurConsole(String erreur) 
     {
         System.err.println("[ERREUR] " + erreur);
     }
 
-    @Override
     public int demanderChoixAlgorithme(List<String> algorithmes) 
     {
         System.out.println("\n=== Choix de l'algorithme ===");
@@ -63,7 +62,6 @@ public class VueConsole implements IVue
         return choix;
     }
 
-    @Override
     public List<String> demanderNoeuds() 
     {
         System.out.println("\n=== Saisie des noeuds ===");
@@ -96,7 +94,6 @@ public class VueConsole implements IVue
         return noeuds;
     }
 
-    @Override
     public List<String[]> demanderArcsPourNoeud(String nomNoeud, List<String> noeudsDispos) 
     {
         System.out.println("\n=== Arcs sortants de " + nomNoeud + " ===");
@@ -142,7 +139,7 @@ public class VueConsole implements IVue
         return lstArcs;
     }
 
-    @Override
+
     public String demanderNoeudSource(List<String> noeudsDispos) 
     {
         System.out.println("\n=== Noeud source ===");
@@ -169,7 +166,7 @@ public class VueConsole implements IVue
         return scanner.nextLine().trim().equalsIgnoreCase("o");
     }
 
-    @Override
+
     public void afficherResultat(Resultat resultat, String nomAlgo) 
     {
         System.out.println("\n========================================");

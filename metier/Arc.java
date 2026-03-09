@@ -7,7 +7,7 @@ public class Arc
 {
 
     private final Noeud destination;
-    private final int poids;
+    private final int   poids;
 
     public Arc(Noeud destination, int poids) 
     {

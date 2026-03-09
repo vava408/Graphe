@@ -17,7 +17,7 @@ public class Frame extends JFrame
 		this.setLocationRelativeTo(null);
 		
 		panelTableau = new PanelTableau(controller);
-		panelGraphe = new PanelGraphe();
+		panelGraphe  = new PanelGraphe();
 		
 		this.setLayout(new java.awt.GridLayout(1, 2));
 		this.add(panelTableau);

@@ -1,8 +1,7 @@
 package controller;
 
 import metier.*;
-import vue.Frame;
-import vue.IVue;
+import vue.*;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -15,19 +14,20 @@ import java.util.List;
 public class Controller implements IController 
 {
 
-    private final IVue vue;
     private Graphe graphe;
     private IAlgorithme algorithme;
-	private Frame frame;
+
+	private Frame      vueInterface;
+    private VueConsole vueConsole;
 
     // Liste des algorithmes disponibles dans l'application
     private final List<IAlgorithme> algorithmesDisponibles;
 
-    public Controller(IVue vue) 
+    public Controller() 
     {
-        this.vue    = vue;
-        this.graphe = new Graphe();
-		this.frame  = new Frame(this);
+        this.vueInterface   = new Frame(this);
+        this.vueConsole     = new VueConsole();
+        this.graphe         = new Graphe();
 
         // asList crée une list non modifiable
         this.algorithmesDisponibles = Arrays.asList(new Dijkstra(), new BellmanFord());
@@ -36,21 +36,6 @@ public class Controller implements IController
     @Override
     public void lancerApplication() 
     {
-        // Étape 1 : choix de l'algorithme
-        List<String> lstNoms = new ArrayList<>();
-        for (IAlgorithme algo : algorithmesDisponibles) 
-        {
-            lstNoms.add(algo.getNom());
-        }
-        int choix       = vue.demanderChoixAlgorithme(lstNoms);
-        this.algorithme = algorithmesDisponibles.get(choix);
-        vue.afficherMessage("Algorithme sélectionné : " + algorithme.getNom());
-
-        // Étape 2 : saisie des noeuds
-        List<String> lstNomsNoeuds = vue.demanderNoeuds();
-        creerNoeuds(lstNomsNoeuds);
-        vue.afficherMessage(lstNomsNoeuds.size() + " noeud(s) créé(s).");
-
         // Étape 3 : type de graphe (orienté ou non)
         boolean oriente = vue.demanderSiOriente();
         vue.afficherMessage(oriente
@@ -94,6 +79,94 @@ public class Controller implements IController
         lancerCalcul(source);
     }
 
+    public void lancerConsole()
+	{
+		try
+		{
+			ProcessBuilder pb = null; // Déclaration et initialisation
+
+			String os = System.getProperty("os.name").toLowerCase();
+
+			switch (os)
+			{
+				case String s && s.contains("win") -> pb = new ProcessBuilder("cmd", "/c", "start", "cmd");
+				case String s && s.contains("mac") -> pb = new ProcessBuilder("open", "-a", "Terminal");
+				case String s && (s.contains("nix") || s.contains("nux")) -> pb = new ProcessBuilder("gnome-terminal");
+				default -> 
+				{
+					System.out.println("OS non supporté");
+					return;
+				}
+			}
+
+			if (pb != null)
+			{
+				pb.start();
+			}
+		}
+		catch (Exception e)
+		{
+			e.printStackTrace();
+		}
+
+		// --- Partie graphe ---
+		// Étape 1 : choix de l'algorithme
+		List<String> lstNoms = new ArrayList<>();
+		for (IAlgorithme algo : algorithmesDisponibles)
+		{
+			lstNoms.add(algo.getNom());
+		}
+		int choix = this.vueConsole.demanderChoixAlgorithme(lstNoms);
+		this.algorithme = algorithmesDisponibles.get(choix);
+		this.vueConsole.afficherMessage("Algorithme sélectionné : " + this.algorithme.getNom());
+
+		// Étape 2 : saisie des noeuds
+		List<String> lstNomsNoeuds = this.vueConsole.demanderNoeuds();
+		creerNoeuds(lstNomsNoeuds);
+		this.vueConsole.afficherMessageConsole(lstNomsNoeuds.size() + " noeud(s) créé(s).");
+
+		// Étape 3 : type de graphe (orienté ou non)
+		boolean oriente = this.vueConsole.demanderSiOriente();
+		this.vueConsole.afficherMessageConsole(oriente
+			? "Graphe orienté."
+			: "Graphe non-orienté (arcs retour ajoutés automatiquement).");
+
+		// Étape 4 : saisie des arcs pour chaque noeud
+		for (String nomNoeud : lstNomsNoeuds)
+		{
+			List<String[]> arcs = this.vueConsole.demanderArcsPourNoeud(nomNoeud, lstNomsNoeuds);
+
+			for (String[] arc : arcs)
+			{
+				String destination = arc[0];
+				try
+				{
+					int poids = Integer.parseInt(arc[1]);
+					boolean ok = ajouterArc(nomNoeud, destination, poids);
+
+					if (!ok)
+					{
+						this.vueConsole.afficherErreurConsole("Arc invalide : " + nomNoeud + " -> " + destination);
+					}
+
+					// Si non-orienté : on ajoute l'arc dans l'autre sens automatiquement
+					if (!oriente)
+					{
+						ajouterArc(destination, nomNoeud, poids);
+					}
+				}
+				catch (NumberFormatException e)
+				{
+					this.vueConsole.afficherErreurConsole("Poids invalide pour l'arc " + nomNoeud + " -> " + destination);
+				}
+			}
+		}
+
+		// Étape 5 : choix du noeud source et lancement du calcul
+		String source = this.vueConsole.demanderNoeudSource(lstNomsNoeuds);
+		lancerCalcul(source);
+	}
+
     @Override
     public void creerNoeuds(List<String> noms) 
     {
@@ -111,8 +184,10 @@ public class Controller implements IController
     }
 
     @Override
-    public void lancerCalcul(String nomSource) 
+    public void lancerCalcul(String nomSource, int algorithme,boolean estOrienter) 
     {
+		this.algorithme = algorithmesDisponibles.get(algorithme);
+
         if (algorithme == null) 
         {
             vue.afficherErreur("Aucun algorithme sélectionné.");

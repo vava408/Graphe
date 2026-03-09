@@ -13,12 +13,8 @@ public class Main
 {
     public static void main(String[] args) 
     {
-        // Création de la vue (seul endroit où on choisit laquelle utiliser)
-        IVue vue = new VueConsole();
-        // IVue vue = new VueSwing(); // ← il suffirait de changer cette ligne
-        
         // Injection de la vue dans le contrôleur
-        IController controller = new Controller(vue);
+        IController controller = new Controller();
 
         // Lancement
         controller.lancerApplication();
