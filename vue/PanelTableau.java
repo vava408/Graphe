@@ -23,6 +23,7 @@ public class PanelTableau extends JPanel
 
     public PanelTableau(Controller controller)
     {
+		
 		this.controller = controller;
         this.setLayout(new BorderLayout(8, 8));
         this.setBorder(BorderFactory.createTitledBorder("Saisie des arcs"));
@@ -110,29 +111,56 @@ public class PanelTableau extends JPanel
 	public void creerGraphe()
 	{
 		Set<String> noeud = getNoeud();
-		List<String> lstNoeud = new ArrayList<>();
-
-		for (String string : noeud)
-		{
-			lstNoeud.add(string);
-		}
-
+		List<String> lstNoeud = new ArrayList<>(noeud);
 		controller.creerNoeuds(lstNoeud);
 
-		for(int cpt = 0 ; model.getRowCount() < cpt; cpt++)
-		{
-			String source = (String)model.getValueAt(cpt, 0);
-			String destination = (String) model.getValueAt(cpt, 1);
-			int poid = (int) model.getValueAt(cpt, 2);
+		System.out.println(model.getRowCount());
 
-			controller.ajouterArc(source,destination, poid);
+		for (int cpt = 0; cpt < model.getRowCount(); cpt++)
+		{
+			String valSource = (String)model.getValueAt(cpt, 0);
+			String valDestination = (String)model.getValueAt(cpt, 1);
+			String valPoid = (String)model.getValueAt(cpt, 2);
+
+			// Vérifier les valeurs
+			if (valSource.isEmpty() || valDestination.isEmpty() || valPoid.isEmpty())
+			{
+				JOptionPane.showMessageDialog(this, "Erreur : certaines cellules sont vides à la ligne " + (cpt + 1),
+						"Erreur de saisie", JOptionPane.ERROR_MESSAGE);
+				continue;
+			}
+
+			String source = valSource.toString().trim();
+			String destination = valDestination.toString().trim();
+			int poid;
+
+			try
+			{
+				poid = Integer.parseInt(valPoid.toString().trim());
+			} catch (NumberFormatException e)
+			{
+				JOptionPane.showMessageDialog(this,
+						"Erreur : poids invalide à la ligne " + (cpt + 1) + ", valeur = " + valPoid, "Erreur de saisie",
+						JOptionPane.ERROR_MESSAGE);
+				continue;
+			}
+
+			// Vérifier que source et destination ne sont pas vides
+			if (source.isEmpty() || destination.isEmpty())
+			{
+				JOptionPane.showMessageDialog(this, "Erreur : source ou destination vide à la ligne " + (cpt + 1),
+						"Erreur de saisie", JOptionPane.ERROR_MESSAGE);
+				continue;
+			}
+
+			// Ajouter l'arc
+			controller.ajouterArc(source, destination, poid);
 		}
 
-		String pointDepart = (String)cbPointDepart.getSelectedItem();
+		String pointDepart = (String) cbPointDepart.getSelectedItem();
 		System.out.println(pointDepart);
 
-		//controller.lancerCalcul(pointDepart);
-
+		controller.lancerCalcul(pointDepart);
 	}
 
 	private Set<String> getNoeud()
