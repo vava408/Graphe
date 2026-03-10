@@ -1,193 +1,316 @@
 package vue;
 
 import metier.Resultat;
-import vue.Frame;
 
 import java.util.*;
 
 /**
- * Vue console : interaction via le terminal.
- * Implémente IVue → peut être remplacée par n'importe quelle autre vue (Swing, web…)
- * sans modifier une seule ligne du contrôleur ou du modèle.
+ * Vue console de l'application.
+ *
+ * Gère toute l'interaction texte avec l'utilisateur : affichage de messages,
+ * saisie des noeuds, des arcs, du noeud source, et affichage du résultat final.
+ *
+ * Fonctionne dans deux modes selon le constructeur utilisé :
+ *
+ *   new VueConsole()
+ *     => Mode console système : lit sur System.in, écrit sur System.out.
+ *       Utilisé quand l'application est lancée avec l'argument "console".
+ *
+ *   new VueConsole(PanelTerminal)
+ *     => Mode terminal intégré : lit et écrit dans le PanelTerminal Swing.
+ *       Utilisé quand l'utilisateur coche "Terminal intégré" dans le menu Options.
+ *
+ * Les méthodes privées print(), println() et nextLine() abstraient la différence
+ * entre les deux modes : tout le reste du code est identique.
  */
 public class VueConsole
 {
+    /**
+     * Scanner sur System.in — utilisé uniquement en mode console système.
+     * null en mode terminal intégré.
+     */
+    private final Scanner       scanner;
 
-    private final Scanner scanner;
-	private Frame frame;
+    /**
+     * Terminal Swing intégré — utilisé uniquement en mode terminal intégré.
+     * null en mode console système.
+     */
+    private final PanelTerminal terminal;
 
-    public VueConsole() 
+    // =========================================================================
+    // Constructeurs
+    // =========================================================================
+
+    /**
+     * Mode console système.
+     * Lit sur System.in et écrit sur System.out / System.err.
+     * Sans terminal intégré, elle lit/écrit dans le vrai terminal système
+     */
+    public VueConsole()
     {
-        this.scanner = new Scanner(System.in);
+        this.scanner  = new Scanner(System.in);
+        this.terminal = null;
     }
 
-   
-    public void afficherMessageConsole(String message) 
+    /**
+     * Mode terminal intégré dans l'IHM Swing.
+     * Toutes les entrées/sorties passent par le PanelTerminal fourni.
+     * 
+     * Enn claire => Avec terminal intégré, elle doit lire/écrire dans le PanelTerminal Swing 
+     *
+     * @param terminal Le terminal Swing dans lequel lire et écrire
+     */
+    public VueConsole(PanelTerminal terminal)
     {
-        System.out.println("[INFO] " + message);
+        this.terminal = terminal;
+        this.scanner  = null;
     }
 
+    // =========================================================================
+    // Méthodes d'entrée/sortie internes (abstraction des deux modes)
+    // =========================================================================
 
-    public void afficherErreurConsole(String erreur) 
+    /**
+     * Écrit du texte sans saut de ligne (utilisé pour les prompts).
+     */
+    private void print(String texte)
     {
-        System.err.println("[ERREUR] " + erreur);
+        if (terminal != null)
+            terminal.afficher(texte);
+        else
+            System.out.print(texte);
     }
 
-    public int demanderChoixAlgorithme(List<String> algorithmes) 
+    /**
+     * Écrit une ligne avec saut de ligne.
+     */
+    private void println(String texte)
     {
-        System.out.println("\n=== Choix de l'algorithme ===");
-        for (int i = 0; i < algorithmes.size(); i++) 
-        {
-            System.out.println("  " + (i + 1) + ". " + algorithmes.get(i));
-        }
+        if (terminal != null)
+            terminal.afficherLigne(texte);
+        else
+            System.out.println(texte);
+    }
+
+    /**
+     * Lit une ligne saisie par l'utilisateur.
+     * Bloquant dans les deux modes : attend que l'utilisateur appuie sur Entrée.
+     */
+    private String nextLine()
+    {
+        if (terminal != null)
+            return terminal.readLine();
+        else
+            return scanner.nextLine().trim();
+    }
+
+    // =========================================================================
+    // Messages
+    // =========================================================================
+
+    /**
+     * Affiche un message d'information préfixé par [INFO].
+     *
+     * @param message Le message à afficher
+     */
+    public void afficherMessage(String message)
+    {
+        println("[INFO] " + message);
+    }
+
+    /**
+     * Affiche un message d'erreur préfixé par [ERREUR].
+     *
+     * @param erreur Le message d'erreur à afficher
+     */
+    public void afficherErreur(String erreur)
+    {
+        println("[ERREUR] " + erreur);
+    }
+
+    // =========================================================================
+    // Saisies interactives
+    // =========================================================================
+
+    /**
+     * Affiche la liste des algorithmes disponibles et demande à l'utilisateur
+     * d'en choisir un par son numéro.
+     *
+     * @param algorithmes Liste des noms d'algorithmes à proposer
+     * @return L'index (0-based) de l'algorithme choisi
+     */
+    public int demanderChoixAlgorithme(List<String> algorithmes)
+    {
+        println("\n=== Choix de l'algorithme ===");
+        for (int i = 0; i < algorithmes.size(); i++)
+            println("  " + (i + 1) + ". " + algorithmes.get(i));
 
         int choix = -1;
-        while (choix < 0 || choix >= algorithmes.size()) 
+        while (choix < 0 || choix >= algorithmes.size())
         {
-            System.out.print("Votre choix (1-" + algorithmes.size() + ") : ");
-            try 
+            print("Votre choix (1-" + algorithmes.size() + ") : ");
+            try
             {
-                choix = Integer.parseInt(scanner.nextLine().trim()) - 1;
-                if (choix < 0 || choix >= algorithmes.size()) 
-                {
-                    System.out.println("Choix invalide, réessayez.");
-                }
-
-            } 
-            catch (NumberFormatException e) 
+                choix = Integer.parseInt(nextLine()) - 1;
+                if (choix < 0 || choix >= algorithmes.size())
+                    println("Choix invalide, réessayez.");
+            }
+            catch (NumberFormatException e)
             {
-                System.out.println("Veuillez entrer un nombre.");
+                println("Veuillez entrer un nombre.");
             }
         }
         return choix;
     }
 
-    public List<String> demanderNoeuds() 
+    /**
+     * Demande la liste des noms de noeuds séparés par des virgules.
+     * Propose une confirmation et recommence si l'utilisateur répond "n".
+     *
+     * @return Liste non vide des noms de noeuds confirmés
+     */
+    public List<String> demanderNoeuds()
     {
-        System.out.println("\n=== Saisie des noeuds ===");
-        System.out.print("Entrez les noms des noeuds séparés par des virgules (ex: A,B,C,S) : ");
-       
-        String   ligne      = scanner.nextLine().trim();
-        String[] parts      = ligne.split(",");
+        println("\n=== Saisie des noeuds ===");
+        print("Noms séparés par des virgules (ex: A,B,C) : ");
 
-        // Le but ici ces de verifier qui ya pas de vide pour les nom de Noeud
-        // Une fois fait, on crée une List extenssible et saine
+        String[] parts = nextLine().split(",");
         List<String> noeuds = new ArrayList<>();
-        for (String part : parts) 
+        for (String part : parts)
         {
             String nom = part.trim();
             if (!nom.isEmpty()) noeuds.add(nom);
         }
 
-        // Confirmation
-        System.out.println("Noeuds saisis : " + noeuds);
-        System.out.print("Confirmer ? (o/n) o = OUI et n = NON : ");
-        String reponse = scanner.nextLine().trim();
+        println("Noeuds saisis : " + noeuds);
+        print("Confirmer ? (o/n) : ");
 
-        // equalsIgnoreCase() compare deux chaînes de caractères sans tenir compte des majuscules/minuscules
-        // (Ces moin casse pied pour les verifications individuel)
-        if (reponse.equalsIgnoreCase("n")) 
-        {
-            return demanderNoeuds(); // Inpeu de récursivité si l'utilisateur veut recommencer
-        }
+        // Récursion si l'utilisateur veut recommencer
+        if (nextLine().equalsIgnoreCase("n"))
+            return demanderNoeuds();
 
         return noeuds;
     }
 
-    public List<String[]> demanderArcsPourNoeud(String nomNoeud, List<String> noeudsDispos) 
+    /**
+     * Demande si le graphe est orienté ou non.
+     *
+     * @return true = orienté, false = non orienté
+     */
+    public boolean demanderSiOriente()
     {
-        System.out.println("\n=== Arcs sortants de " + nomNoeud + " ===");
-        System.out.println("Noeuds disponibles : " + noeudsDispos);
-        System.out.println("(Tapez 'fin' pour passer au noeud suivant)");
+        print("\nGraphe orienté ? (o/n) : ");
+        return nextLine().equalsIgnoreCase("o");
+    }
+
+    /**
+     * Demande les arcs sortants pour un noeud donné.
+     * L'utilisateur saisit une destination et un poids, puis "fin" pour terminer.
+     *
+     * @param nomNoeud     Le noeud source dont on saisit les arcs
+     * @param noeudsDispos Les noeuds vers lesquels un arc est autorisé
+     * @return Liste de tableaux [nomDestination, poids] sous forme de String[]
+     */
+    public List<String[]> demanderArcsPourNoeud(String nomNoeud, List<String> noeudsDispos)
+    {
+        println("\n=== Arcs sortants de " + nomNoeud + " ===");
+        println("Noeuds disponibles : " + noeudsDispos);
+        println("(Tapez 'fin' pour passer au noeud suivant)");
 
         List<String[]> lstArcs = new ArrayList<>();
 
-        while (true) 
+        while (true)
         {
-            System.out.print("  Destination depuis " + nomNoeud + " (ou 'fin') : ");
-            String destination = scanner.nextLine().trim();
+            print("  Destination depuis " + nomNoeud + " (ou 'fin') : ");
+            String destination = nextLine();
 
             if (destination.equalsIgnoreCase("fin")) break;
 
-            if (!noeudsDispos.contains(destination)) 
+            if (!noeudsDispos.contains(destination))
             {
-                System.out.println("  Ce noeud n'existe pas. Choisissez parmi : " + noeudsDispos);
+                println("  Noeud inconnu. Choisissez parmi : " + noeudsDispos);
+                continue;
+            }
+            if (destination.equals(nomNoeud))
+            {
+                println("  Arc vers soi-même ignoré.");
                 continue;
             }
 
-            if (destination.equals(nomNoeud)) 
-            {
-                System.out.println("  Un arc vers soi-même n'est pas utile ici.");
-                continue;
-            }
+            print("  Poids de l'arc " + nomNoeud + " -> " + destination + " : ");
+            String poids = nextLine();
 
-            System.out.print("  Poids de l'arc " + nomNoeud + " -> " + destination + " : ");
-            String poids = scanner.nextLine().trim();
-
-            try 
+            try
             {
-                Integer.parseInt(poids); // validation
+                Integer.parseInt(poids); // validation — exception si non numérique
                 lstArcs.add(new String[]{destination, poids});
-                System.out.println("  Arc " + nomNoeud + " -> " + destination + " (poids: " + poids + ") ajouté.");
-            } 
-            catch (NumberFormatException e) 
+                println("  Arc ajouté : " + nomNoeud + " -> " + destination + " (poids: " + poids + ")");
+            }
+            catch (NumberFormatException e)
             {
-                System.out.println("  Poids invalide, cet arc est ignoré.");
+                println("  Poids invalide, arc ignoré.");
             }
         }
 
         return lstArcs;
     }
 
-
-    public String demanderNoeudSource(List<String> noeudsDispos) 
+    /**
+     * Demande le noeud de départ pour le calcul parmi les noeuds disponibles.
+     *
+     * @param noeudsDispos Liste des noeuds existants dans le graphe
+     * @return Le nom du noeud source choisi
+     */
+    public String demanderNoeudSource(List<String> noeudsDispos)
     {
-        System.out.println("\n=== Noeud source ===");
-        System.out.println("Noeuds disponibles : " + noeudsDispos);
+        println("\n=== Noeud source ===");
+        println("Noeuds disponibles : " + noeudsDispos);
 
         String source = "";
-        while (!noeudsDispos.contains(source)) 
+        while (!noeudsDispos.contains(source))
         {
-            System.out.print("Choisissez le noeud de départ : ");
-            source = scanner.nextLine().trim();
-
-            if (!noeudsDispos.contains(source)) 
-            {
-                System.out.println("Noeud inconnu, réessayez.");
-            }
+            print("Noeud de départ : ");
+            source = nextLine();
+            if (!noeudsDispos.contains(source))
+                println("Noeud inconnu, réessayez.");
         }
         return source;
     }
 
+    // =========================================================================
+    // Affichage du résultat
+    // =========================================================================
 
-    public boolean demanderSiOriente() 
+    /**
+     * Affiche le tableau des résultats : pour chaque noeud, sa distance minimale
+     * depuis la source et le chemin emprunté.
+     *
+     * @param resultat Le résultat produit par l'algorithme
+     * @param nomAlgo  Le nom de l'algorithme utilisé (pour l'en-tête)
+     */
+    public void afficherResultat(Resultat resultat, String nomAlgo)
     {
-        System.out.print("Graphe orienté ou non-orienté ? (o/n) : ");
-        return scanner.nextLine().trim().equalsIgnoreCase("o");
-    }
+        println("\n========================================");
+        println("  Résultats - " + nomAlgo);
+        println("  Source : " + resultat.getNomSource());
+        println("========================================");
+        println(String.format("%-10s %-10s %s", "Noeud", "Distance", "Chemin"));
+        println("----------------------------------------");
 
-
-    public void afficherResultat(Resultat resultat, String nomAlgo) 
-    {
-        System.out.println("\n========================================");
-        System.out.println("  Résultats - " + nomAlgo);
-        System.out.println("  Source : " + resultat.getNomSource());
-        System.out.println("========================================");
-        System.out.printf("%-10s %-10s %s%n", "Noeud", "Distance", "Chemin");
-        System.out.println("----------------------------------------");
-
-        for (Map.Entry<String, Integer> entry : resultat.getDistances().entrySet()) 
+        for (Map.Entry<String, Integer> entry : resultat.getDistances().entrySet())
         {
-            String       nom = entry.getKey();
-            int          dist = entry.getValue();
+            String       nom    = entry.getKey();
+            int          dist   = entry.getValue();
             List<String> chemin = resultat.getChemin(nom);
 
+            // Integer.MAX_VALUE représente "infini" (noeud inaccessible)
             String distStr   = (dist == Integer.MAX_VALUE) ? "∞" : String.valueOf(dist);
-            String cheminStr = (chemin == null || chemin.isEmpty()) ? "Inaccessible"
-                                                                     : String.join(" -> ", chemin);
+            String cheminStr = (chemin == null || chemin.isEmpty())
+                               ? "Inaccessible"
+                               : String.join(" -> ", chemin);
 
-            System.out.printf("%-10s %-10s %s%n", nom, distStr, cheminStr);
+            println(String.format("%-10s %-10s %s", nom, distStr, cheminStr));
         }
-        System.out.println("========================================");
+        println("========================================");
     }
 }

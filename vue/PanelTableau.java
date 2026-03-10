@@ -110,7 +110,7 @@ public class PanelTableau extends JPanel
 
 	public void creerGraphe()
 	{
-		Set<String> noeud = getNoeud();
+		Set<String> noeud     = getNoeud();
 		List<String> lstNoeud = new ArrayList<>(noeud);
 		controller.creerNoeuds(lstNoeud);
 
@@ -118,9 +118,9 @@ public class PanelTableau extends JPanel
 
 		for (int cpt = 0; cpt < model.getRowCount(); cpt++)
 		{
-			String valSource = (String)model.getValueAt(cpt, 0);
+			String valSource      = (String)model.getValueAt(cpt, 0);
 			String valDestination = (String)model.getValueAt(cpt, 1);
-			String valPoid = (String)model.getValueAt(cpt, 2);
+			String valPoid        = (String)model.getValueAt(cpt, 2);
 
 			// Vérifier les valeurs
 			if (valSource.isEmpty() || valDestination.isEmpty() || valPoid.isEmpty())

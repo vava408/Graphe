@@ -1,7 +1,6 @@
 Main.java
 
 
-vue/IVue.java
 vue/VueConsole.java
 vue/PanelTableau.java
 vue/PanelGraphe.java

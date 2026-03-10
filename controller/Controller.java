@@ -1,212 +1,249 @@
 package controller;
 
 import metier.*;
-import vue.*;
+import vue.Frame;
+import vue.PanelTerminal;
+import vue.VueConsole;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
 /**
- * Contrôleur principal : orchestre la vue, le graphe et les algorithmes.
- * Ne connaît la vue que à travers IVue pour augmenter l'indépendance.
+ * Contrôleur principal de l'application.
+ *
+ * Fait le lien entre la vue (Frame / VueConsole) et le modèle (Graphe + algorithmes).
+ * Gère trois modes de fonctionnement :
+ *
+ *   1. lancerIHM()                → ouvre la fenêtre Swing, résultat affiché selon les options du menu
+ *   2. lancerConsole()            → interaction dans le terminal système (System.in / System.out)
+ *   3. lancerConsoleTerminal(...) → interaction dans le PanelTerminal intégré à la fenêtre Swing
+ *
+ * La logique de saisie console est factorisée dans executerFluxConsole()
+ * pour éviter toute duplication entre les modes 2 et 3.
  */
-public class Controller implements IController 
+public class Controller implements IController
 {
+    /** Graphe courant sur lequel on travaille. Réinitialisé à chaque creerNoeuds(). */
+    private Graphe      graphe;
 
-    private Graphe graphe;
+    /** Algorithme sélectionné pour le calcul en cours. */
     private IAlgorithme algorithme;
 
-	private Frame      vueInterface;
+    /** Fenêtre principale — null jusqu'à l'appel de lancerIHM(). */
+    private Frame      frame;
+
+    /** Vue console — réinstanciée selon le mode (système ou terminal intégré). */
     private VueConsole vueConsole;
 
-    // Liste des algorithmes disponibles dans l'application
+    /**
+     * Liste fixe des algorithmes disponibles dans l'application.
+     * Index 0 = Dijkstra, Index 1 = Bellman-Ford.
+     * Correspond aux indices utilisés dans PanelTableau et lancerCalcul().
+     */
     private final List<IAlgorithme> algorithmesDisponibles;
 
-    public Controller() 
+    public Controller()
     {
-        this.vueInterface   = new Frame(this);
-        this.vueConsole     = new VueConsole();
-        this.graphe         = new Graphe();
-
-        // asList crée une list non modifiable
+        this.graphe                 = new Graphe();
+        this.vueConsole             = new VueConsole();
         this.algorithmesDisponibles = Arrays.asList(new Dijkstra(), new BellmanFord());
+        // Frame intentionnellement non créée ici : elle est créée dans lancerIHM()
     }
 
-    @Override
-    public void lancerApplication() 
-    {
-        // Étape 3 : type de graphe (orienté ou non)
-        boolean oriente = vue.demanderSiOriente();
-        vue.afficherMessage(oriente
-            ? "Graphe orienté."
-            : "Graphe non-orienté (arcs retour ajoutés automatiquement).");
+    // =========================================================================
+    // Lancement
+    // =========================================================================
 
-        // Étape 4 : saisie des arcs pour chaque noeud
-        for (String nomNoeud : lstNomsNoeuds) 
+    /**
+     * Crée et affiche la fenêtre Swing.
+     * La Frame se charge elle-même d'afficher PanelTableau et PanelGraphe.
+     */
+    @Override
+    public void lancerIHM()
+    {
+        this.frame = new Frame(this);
+    }
+
+    /**
+     * Lance la saisie interactive en mode console système.
+     * Crée un VueConsole branché sur System.in / System.out.
+     */
+    @Override
+    public void lancerConsole()
+    {
+        this.vueConsole = new VueConsole();
+        executerFluxConsole(vueConsole);
+    }
+
+    /**
+     * Lance la saisie interactive dans le terminal intégré à l'IHM.
+     * Appelé par Frame dans un thread dédié (car readLine() est bloquant).
+     *
+     * @param terminal Le PanelTerminal dans lequel lire et écrire
+     */
+    public void lancerConsoleTerminal(PanelTerminal terminal)
+    {
+        VueConsole vueTerminal = new VueConsole(terminal);
+        executerFluxConsole(vueTerminal);
+    }
+
+    // =========================================================================
+    // Flux console commun
+    // =========================================================================
+
+    /**
+     * Enchaîne toutes les étapes de saisie et de calcul en mode console.
+     * Utilisé aussi bien par lancerConsole() que lancerConsoleTerminal()
+     * pour éviter la duplication de code.
+     *
+     * Étapes :
+     *   1. Choix de l'algorithme
+     *   2. Saisie des noeuds
+     *   3. Graphe orienté ou non
+     *   4. Saisie des arcs
+     *   5. Choix du noeud source + calcul + affichage du résultat
+     *
+     * @param vue La VueConsole à utiliser (système ou terminal intégré)
+     */
+    private void executerFluxConsole(VueConsole vue)
+    {
+        // --- Étape 1 : choix de l'algorithme ---
+        List<String> nomsAlgos = new ArrayList<>();
+        for (IAlgorithme algo : algorithmesDisponibles)
+            nomsAlgos.add(algo.getNom());
+
+        int choix       = vue.demanderChoixAlgorithme(nomsAlgos);
+        this.algorithme = algorithmesDisponibles.get(choix);
+        vue.afficherMessage("Algorithme sélectionné : " + algorithme.getNom());
+
+        // --- Étape 2 : saisie des noeuds ---
+        List<String> nomsNoeuds = vue.demanderNoeuds();
+        creerNoeuds(nomsNoeuds);
+        vue.afficherMessage(nomsNoeuds.size() + " noeud(s) créé(s).");
+
+        // --- Étape 3 : orienté ou non ---
+        boolean oriente = vue.demanderSiOriente();
+        vue.afficherMessage(oriente ? "Graphe orienté." : "Graphe non-orienté.");
+
+        // --- Étape 4 : saisie des arcs ---
+        for (String nomNoeud : nomsNoeuds)
         {
-            List<String[]> arcs = vue.demanderArcsPourNoeud(nomNoeud, lstNomsNoeuds);
-            
-            // Pour rapelle la list "arc" contien 1 arc
-            // arc[0] => destination arc[1] => le poid
-            for (String[] arc : arcs) 
+            List<String[]> arcs = vue.demanderArcsPourNoeud(nomNoeud, nomsNoeuds);
+            for (String[] arc : arcs)
             {
                 String destination = arc[0];
-                try 
+                try
                 {
-                    int poids  = Integer.parseInt(arc[1]);
-                    boolean ok = ajouterArc(nomNoeud, destination, poids);
-                    if (!ok) 
-                    {
-                        vue.afficherErreur("Arc invalide : " + nomNoeud + " -> " + destination);
-                    }
+                    int poids = Integer.parseInt(arc[1]);
+                    ajouterArc(nomNoeud, destination, poids);
 
-                    // !!!!!!!! Si non-orienté : on ajoute l'arc dans l'autre sens automatiquement
-                    if (!oriente) 
-                    {
+                    // Graphe non orienté : on ajoute l'arc dans le sens inverse aussi
+                    if (!oriente)
                         ajouterArc(destination, nomNoeud, poids);
-                    }
-                } 
-                catch (NumberFormatException e) 
+                }
+                catch (NumberFormatException e)
                 {
                     vue.afficherErreur("Poids invalide pour l'arc " + nomNoeud + " -> " + destination);
                 }
             }
         }
 
-        // Étape 5 : choix du noeud source et lancement du calcul
-        String source = vue.demanderNoeudSource(lstNomsNoeuds);
-        lancerCalcul(source);
-    }
+        // --- Étape 5 : calcul et affichage ---
+        String   source   = vue.demanderNoeudSource(nomsNoeuds);
+        Resultat resultat = algorithme.calculer(graphe, source);
 
-    public void lancerConsole()
-	{
-		try
-		{
-			ProcessBuilder pb = null; // Déclaration et initialisation
-
-			String os = System.getProperty("os.name").toLowerCase();
-
-			switch (os)
-			{
-				case String s && s.contains("win") -> pb = new ProcessBuilder("cmd", "/c", "start", "cmd");
-				case String s && s.contains("mac") -> pb = new ProcessBuilder("open", "-a", "Terminal");
-				case String s && (s.contains("nix") || s.contains("nux")) -> pb = new ProcessBuilder("gnome-terminal");
-				default -> 
-				{
-					System.out.println("OS non supporté");
-					return;
-				}
-			}
-
-			if (pb != null)
-			{
-				pb.start();
-			}
-		}
-		catch (Exception e)
-		{
-			e.printStackTrace();
-		}
-
-		// --- Partie graphe ---
-		// Étape 1 : choix de l'algorithme
-		List<String> lstNoms = new ArrayList<>();
-		for (IAlgorithme algo : algorithmesDisponibles)
-		{
-			lstNoms.add(algo.getNom());
-		}
-		int choix = this.vueConsole.demanderChoixAlgorithme(lstNoms);
-		this.algorithme = algorithmesDisponibles.get(choix);
-		this.vueConsole.afficherMessage("Algorithme sélectionné : " + this.algorithme.getNom());
-
-		// Étape 2 : saisie des noeuds
-		List<String> lstNomsNoeuds = this.vueConsole.demanderNoeuds();
-		creerNoeuds(lstNomsNoeuds);
-		this.vueConsole.afficherMessageConsole(lstNomsNoeuds.size() + " noeud(s) créé(s).");
-
-		// Étape 3 : type de graphe (orienté ou non)
-		boolean oriente = this.vueConsole.demanderSiOriente();
-		this.vueConsole.afficherMessageConsole(oriente
-			? "Graphe orienté."
-			: "Graphe non-orienté (arcs retour ajoutés automatiquement).");
-
-		// Étape 4 : saisie des arcs pour chaque noeud
-		for (String nomNoeud : lstNomsNoeuds)
-		{
-			List<String[]> arcs = this.vueConsole.demanderArcsPourNoeud(nomNoeud, lstNomsNoeuds);
-
-			for (String[] arc : arcs)
-			{
-				String destination = arc[0];
-				try
-				{
-					int poids = Integer.parseInt(arc[1]);
-					boolean ok = ajouterArc(nomNoeud, destination, poids);
-
-					if (!ok)
-					{
-						this.vueConsole.afficherErreurConsole("Arc invalide : " + nomNoeud + " -> " + destination);
-					}
-
-					// Si non-orienté : on ajoute l'arc dans l'autre sens automatiquement
-					if (!oriente)
-					{
-						ajouterArc(destination, nomNoeud, poids);
-					}
-				}
-				catch (NumberFormatException e)
-				{
-					this.vueConsole.afficherErreurConsole("Poids invalide pour l'arc " + nomNoeud + " -> " + destination);
-				}
-			}
-		}
-
-		// Étape 5 : choix du noeud source et lancement du calcul
-		String source = this.vueConsole.demanderNoeudSource(lstNomsNoeuds);
-		lancerCalcul(source);
-	}
-
-    @Override
-    public void creerNoeuds(List<String> noms) 
-    {
-        this.graphe = new Graphe(); // reset au cas où
-        for (String nom : noms) 
+        if (resultat == null)
         {
-            graphe.ajouterNoeud(nom.trim());
-        }
-    }
-
-    @Override
-    public boolean ajouterArc(String nomSource, String nomDestination, int poids) 
-    {
-        return graphe.ajouterArc(nomSource.trim(), nomDestination.trim(), poids);
-    }
-
-    @Override
-    public void lancerCalcul(String nomSource, int algorithme,boolean estOrienter) 
-    {
-		this.algorithme = algorithmesDisponibles.get(algorithme);
-
-        if (algorithme == null) 
-        {
-            vue.afficherErreur("Aucun algorithme sélectionné.");
-            return;
-        }
-        if (!graphe.contientNoeud(nomSource)) 
-        {
-            vue.afficherErreur("Le noeud source '" + nomSource + "' n'existe pas.");
-            return;
-        }
-
-        Resultat resultat = algorithme.calculer(graphe, nomSource);
-
-        if (resultat == null) 
-        {
-            vue.afficherErreur("Calcul impossible : cycle de poids négatif détecté dans le graphe.");
+            vue.afficherErreur("Calcul impossible : cycle de poids négatif détecté.");
             return;
         }
 
         vue.afficherResultat(resultat, algorithme.getNom());
+    }
+
+    // =========================================================================
+    // Opérations sur le graphe — appelées par PanelTableau (mode IHM)
+    // =========================================================================
+
+    /**
+     * Recrée le graphe depuis zéro avec la liste de noms fournie.
+     * Toute donnée précédente est perdue.
+     */
+    @Override
+    public void creerNoeuds(List<String> noms)
+    {
+        this.graphe = new Graphe();
+        for (String nom : noms)
+            graphe.ajouterNoeud(nom.trim());
+    }
+
+    /**
+     * Ajoute un arc orienté dans le graphe courant.
+     * Les espaces en début/fin de nom sont ignorés.
+     */
+    @Override
+    public boolean ajouterArc(String nomSource, String nomDestination, int poids)
+    {
+        return graphe.ajouterArc(nomSource.trim(), nomDestination.trim(), poids);
+    }
+
+    /**
+     * Calcule le plus court chemin depuis nomSource et affiche le résultat.
+     * Appelé par PanelTableau quand l'utilisateur clique sur "Calculer".
+     *
+     * Si le graphe est non orienté, les arcs retour sont ajoutés avant le calcul.
+     * Le résultat est transmis à Frame qui l'affiche selon les options du menu.
+     */
+    @Override
+    public void lancerCalcul(String nomSource, int algorithmeIndex, boolean estOriente)
+    {
+        // Vérification de l'index
+        if (algorithmeIndex < 0 || algorithmeIndex >= algorithmesDisponibles.size())
+        {
+            frame.afficherErreur("Index d'algorithme invalide : " + algorithmeIndex);
+            return;
+        }
+
+        this.algorithme = algorithmesDisponibles.get(algorithmeIndex);
+
+        // Vérification que le noeud source existe dans le graphe
+        if (!graphe.contientNoeud(nomSource))
+        {
+            frame.afficherErreur("Le noeud source '" + nomSource + "' n'existe pas.");
+            return;
+        }
+
+        // Graphe non orienté : on collecte les arcs retour manquants puis on les ajoute.
+        // On collecte d'abord pour éviter de modifier la collection pendant qu'on l'itère.
+        if (!estOriente)
+        {
+            List<String[]> arcsRetour = new ArrayList<>();
+            for (Noeud noeud : graphe.getNoeuds())
+            {
+                for (Arc arc : noeud.getArcsSortants())
+                {
+                    arcsRetour.add(new String[]{
+                        arc.getDestination().getNom(),
+                        noeud.getNom(),
+                        String.valueOf(arc.getPoids())
+                    });
+                }
+            }
+            for (String[] a : arcsRetour)
+                graphe.ajouterArc(a[0], a[1], Integer.parseInt(a[2]));
+        }
+
+        // Lancement du calcul
+        Resultat resultat = algorithme.calculer(graphe, nomSource);
+
+        if (resultat == null)
+        {
+            frame.afficherErreur("Calcul impossible : cycle de poids négatif détecté.");
+            return;
+        }
+
+        // Transmission du résultat à la Frame — c'est elle qui décide comment l'afficher
+        frame.afficherResultat(resultat, algorithme.getNom());
     }
 }

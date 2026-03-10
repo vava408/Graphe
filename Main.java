@@ -1,22 +1,32 @@
 import controller.Controller;
 import controller.IController;
-import vue.IVue;
-import vue.VueConsole;
 
 /**
  * Point d'entrée de l'application.
  *
- * Pour changer de vue (ex: passer à Swing), il suffit de remplacer
- * "new VueConsole()" par "new VueSwing()" — RIEN D'AUTRE ne change.
+ * Deux modes de lancement possibles :
+ *
+ *   java Main
+ *     => Lance l'IHM Swing. L'utilisateur interagit via la fenêtre graphique.
+ *       Le menu "Options" permet de choisir le mode d'affichage du résultat.
+ *
+ *   java Main console
+ *     => Lance le mode console système. Toute l'interaction se fait dans le terminal
+ *       via System.in / System.out. Pas de fenêtre graphique.
+ *
+ * Le choix du mode est délégué au Controller via IController,
+ * ce qui permet de changer d'implémentation sans toucher à ce fichier.
  */
-public class Main 
+public class Main
 {
-    public static void main(String[] args) 
+    public static void main(String[] args)
     {
-        // Injection de la vue dans le contrôleur
         IController controller = new Controller();
 
-        // Lancement
-        controller.lancerApplication();
+        // Si le premier argument est "console", on lance le mode terminal système
+        if (args.length > 0 && args[0].equalsIgnoreCase("console"))
+            controller.lancerConsole();
+        else
+            controller.lancerIHM();
     }
 }
