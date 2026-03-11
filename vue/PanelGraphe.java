@@ -10,7 +10,7 @@ import java.util.Set;
 
 import org.graphstream.graph.Edge;
 import org.graphstream.graph.Graph;
-import org.graphstream.graph.implementations.SingleGraph;
+import org.graphstream.graph.implementations.MultiGraph;
 import org.graphstream.ui.swing_viewer.SwingViewer;
 import org.graphstream.ui.swing_viewer.ViewPanel;
 import org.graphstream.ui.view.Viewer;
@@ -33,7 +33,8 @@ public class PanelGraphe extends JPanel
         System.setProperty("org.graphstream.ui", "swing");
         this.setLayout(new BorderLayout());
 
-        graph = new SingleGraph("Graphe Orienté");
+        // MultiGraph autorise plusieurs arêtes entre les mêmes noeuds (poids différents, sens opposés).
+        graph = new MultiGraph("Graphe Orienté");
 
         // Le viewer est embarqué dans ce JPanel (pas de fenêtre externe graph.display()).
         Viewer viewer = new SwingViewer(graph, Viewer.ThreadingModel.GRAPH_IN_ANOTHER_THREAD);
