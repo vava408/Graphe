@@ -20,11 +20,13 @@ public class PanelTableau extends JPanel
     private final JComboBox<String> cbAlgorithme;
     private final JCheckBox cbOriente;
 	private Controller controller;
+	private PanelGraphe panelGraphe;
 
-    public PanelTableau(Controller controller)
+    public PanelTableau(Controller controller, PanelGraphe panelGraphe)
     {
 		
 		this.controller = controller;
+		this.panelGraphe = panelGraphe;
         this.setLayout(new BorderLayout(8, 8));
         this.setBorder(BorderFactory.createTitledBorder("Saisie des arcs"));
 
@@ -112,6 +114,7 @@ public class PanelTableau extends JPanel
 	{
 		Set<String> noeud     = getNoeud();
 		List<String> lstNoeud = new ArrayList<>(noeud);
+		boolean estOrienter = this.cbOriente.isSelected();
 		controller.creerNoeuds(lstNoeud);
 
 		System.out.println(model.getRowCount());
@@ -145,16 +148,12 @@ public class PanelTableau extends JPanel
 				continue;
 			}
 
-			// Vérifier que source et destination ne sont pas vides
-			if (source.isEmpty() || destination.isEmpty())
-			{
-				JOptionPane.showMessageDialog(this, "Erreur : source ou destination vide à la ligne " + (cpt + 1),
-						"Erreur de saisie", JOptionPane.ERROR_MESSAGE);
-				continue;
-			}
 
 			// Ajouter l'arc
 			controller.ajouterArc(source, destination, poid);
+			if (!estOrienter)
+				controller.ajouterArc(destination, source, poid);
+			
 		}
 
 		String pointDepart = (String) cbPointDepart.getSelectedItem();
@@ -172,14 +171,14 @@ public class PanelTableau extends JPanel
 			algoInt = 1;
 		}
 
-		boolean estOrienter = this.cbOriente.isSelected();
-
 		controller.lancerCalcul(pointDepart, algoInt, estOrienter);
+		this.panelGraphe.afficherGraphes(estOrienter);
 	}
 
 	private Set<String> getNoeud()
 	{
 		Set<String> points = new LinkedHashSet<>();
+		List<String> lstPoint = new ArrayList<>();
 
 		for (int cpt = 0; cpt < model.getRowCount(); cpt++)
 		{
@@ -192,7 +191,7 @@ public class PanelTableau extends JPanel
 			if (!destination.isEmpty())
 				points.add(destination);
 		}
-
+		lstPoint.addAll(points);
 		return points;
 	}
 	

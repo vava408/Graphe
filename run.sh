@@ -1,5 +1,8 @@
-javac @compile.list -d class
+#!/bin/sh
 
-cd class
+SCRIPT_DIR="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
 
-java Main
+javac -encoding UTF-8 -cp "$SCRIPT_DIR/lib/*" @"$SCRIPT_DIR/compile.list" -d "$SCRIPT_DIR/class" || exit $?
+
+cd "$SCRIPT_DIR/class" || exit $?
+java -cp ".:$SCRIPT_DIR/lib/*" Main

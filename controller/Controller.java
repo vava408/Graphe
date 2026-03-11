@@ -7,7 +7,9 @@ import vue.VueConsole;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 /**
  * Contrôleur principal de l'application.
@@ -36,6 +38,9 @@ public class Controller implements IController
     /** Vue console — réinstanciée selon le mode (système ou terminal intégré). */
     private VueConsole vueConsole;
 
+    /** Dernier résultat calculé, utilisé par la vue graphique pour la mise en évidence. */
+    private Resultat dernierResultat;
+
     /**
      * Liste fixe des algorithmes disponibles dans l'application.
      * Index 0 = Dijkstra, Index 1 = Bellman-Ford.
@@ -47,6 +52,7 @@ public class Controller implements IController
     {
         this.graphe                 = new Graphe();
         this.vueConsole             = new VueConsole();
+        this.dernierResultat        = null;
         this.algorithmesDisponibles = Arrays.asList(new Dijkstra(), new BellmanFord());
         // Frame intentionnellement non créée ici : elle est créée dans lancerIHM()
     }
@@ -214,36 +220,69 @@ public class Controller implements IController
             return;
         }
 
-        // Graphe non orienté : on collecte les arcs retour manquants puis on les ajoute.
-        // On collecte d'abord pour éviter de modifier la collection pendant qu'on l'itère.
-        if (!estOriente)
-        {
-            List<String[]> arcsRetour = new ArrayList<>();
-            for (Noeud noeud : graphe.getNoeuds())
-            {
-                for (Arc arc : noeud.getArcsSortants())
-                {
-                    arcsRetour.add(new String[]{
-                        arc.getDestination().getNom(),
-                        noeud.getNom(),
-                        String.valueOf(arc.getPoids())
-                    });
-                }
-            }
-            for (String[] a : arcsRetour)
-                graphe.ajouterArc(a[0], a[1], Integer.parseInt(a[2]));
-        }
-
         // Lancement du calcul
         Resultat resultat = algorithme.calculer(graphe, nomSource);
 
         if (resultat == null)
         {
+            this.dernierResultat = null;
             frame.afficherErreur("Calcul impossible : cycle de poids négatif détecté.");
             return;
         }
 
+        this.dernierResultat = resultat;
+
         // Transmission du résultat à la Frame — c'est elle qui décide comment l'afficher
         frame.afficherResultat(resultat, algorithme.getNom());
     }
+    public List<String> getNomsNoeuds()
+    {
+        List<String> noms = new ArrayList<>();
+        for (Noeud noeud : this.graphe.getNoeuds())
+            noms.add(noeud.getNom());
+        return noms;
+    }
+
+    public List<String[]> getArcsPourAffichage()
+    {
+        List<String[]> arcs = new ArrayList<>();
+
+        for (Noeud source : this.graphe.getNoeuds())
+        {
+            for (Arc arc : source.getArcsSortants())
+            {
+                arcs.add(new String[]
+                {
+                    source.getNom(),
+                    arc.getDestination().getNom(),
+                    String.valueOf(arc.getPoids())
+                });
+            }
+        }
+
+        return arcs;
+    }
+
+    public Set<String> getArcsPlusCourtsChemins()
+    {
+        Set<String> arcs = new HashSet<>();
+
+        if (this.dernierResultat == null)
+            return arcs;
+
+        for (String nomNoeud : this.dernierResultat.getDistances().keySet())
+        {
+            List<String> chemin = this.dernierResultat.getChemin(nomNoeud);
+            if (chemin == null || chemin.size() < 2)
+                continue;
+
+            for (int i = 0; i < chemin.size() - 1; i++)
+            {
+                arcs.add(chemin.get(i) + "->" + chemin.get(i + 1));
+            }
+        }
+
+        return arcs;
+    }
+
 }

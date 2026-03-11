@@ -5,6 +5,7 @@ vue/VueConsole.java
 vue/PanelTableau.java
 vue/PanelGraphe.java
 vue/Frame.java
+vue/PanelTerminal.java
 
 
 metier/Arc.java

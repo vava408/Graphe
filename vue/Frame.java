@@ -62,13 +62,14 @@ public class Frame extends JFrame
         this.setSize(900, 600);
         this.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         this.setLocationRelativeTo(null);
+        panelGraphe = new PanelGraphe(this.controller);
+
 
         // Panel gauche : démarre avec PanelTableau
         panelGauche  = new JPanel(new BorderLayout());
-        panelTableau = new PanelTableau(controller);
+        panelTableau = new PanelTableau(controller, panelGraphe);
         panelGauche.add(panelTableau, BorderLayout.CENTER);
 
-        panelGraphe = new PanelGraphe();
 
         this.setLayout(new GridLayout(1, 2));
         this.add(panelGauche);
