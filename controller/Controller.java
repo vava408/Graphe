@@ -17,9 +17,9 @@ import java.util.Set;
  * Fait le lien entre la vue (Frame / VueConsole) et le modèle (Graphe + algorithmes).
  * Gère trois modes de fonctionnement :
  *
- *   1. lancerIHM()                → ouvre la fenêtre Swing, résultat affiché selon les options du menu
- *   2. lancerConsole()            → interaction dans le terminal système (System.in / System.out)
- *   3. lancerConsoleTerminal(...) → interaction dans le PanelTerminal intégré à la fenêtre Swing
+ *   1. lancerIHM()                => ouvre la fenêtre Swing, résultat affiché selon les options du menu
+ *   2. lancerConsole()            => interaction dans le terminal système (System.in / System.out)
+ *   3. lancerConsoleTerminal(...) => interaction dans le PanelTerminal intégré à la fenêtre Swing
  *
  * La logique de saisie console est factorisée dans executerFluxConsole()
  * pour éviter toute duplication entre les modes 2 et 3.

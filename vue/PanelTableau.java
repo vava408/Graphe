@@ -15,12 +15,12 @@ import java.util.*;
 public class PanelTableau extends JPanel
 {
     private final DefaultTableModel model;
-    private final JTable table;
+    private final JTable            table;
     private final JComboBox<String> cbPointDepart;
     private final JComboBox<String> cbAlgorithme;
-    private final JCheckBox cbOriente;
-	private Controller controller;
-	private PanelGraphe panelGraphe;
+    private final JCheckBox         cbOriente;
+	private       Controller        controller;
+	private       PanelGraphe       panelGraphe;
 
     public PanelTableau(Controller controller, PanelGraphe panelGraphe)
     {
@@ -138,67 +138,74 @@ public class PanelTableau extends JPanel
 
 	public void creerGraphe()
 	{
-		Set<String> noeud     = getNoeud();
-		List<String> lstNoeud = new ArrayList<>(noeud);
-		boolean estOrienter = this.cbOriente.isSelected();
-		controller.creerNoeuds(lstNoeud);
+		// Récupération des noeuds et de l'orientation du graphe
+		Set<String>  noeud      = getNoeud();
+		List<String> lstNoeud   = new ArrayList<>(noeud);
+		boolean      estOriente = this.cbOriente.isSelected();
 
-		System.out.println(model.getRowCount());
+		// Création des noeuds dans le modèle métier
+		this.controller.creerNoeuds(lstNoeud);
 
-		for (int cpt = 0; cpt < model.getRowCount(); cpt++)
+		// Parcours de chaque ligne du tableau pour créer les arcs
+		for (int cpt = 0; cpt < this.model.getRowCount(); cpt++)
 		{
-			String valSource      = (String)model.getValueAt(cpt, 0);
-			String valDestination = (String)model.getValueAt(cpt, 1);
-			String valPoid        = (String)model.getValueAt(cpt, 2);
+			String valSource      = (String) this.model.getValueAt(cpt, 0);
+			String valDestination = (String) this.model.getValueAt(cpt, 1);
+			String valPoid        = (String) this.model.getValueAt(cpt, 2);
 
-			// Vérifier les valeurs
+			// Vérification que les cellules ne sont pas vides
 			if (valSource.isEmpty() || valDestination.isEmpty() || valPoid.isEmpty())
 			{
-				JOptionPane.showMessageDialog(this, "Erreur : certaines cellules sont vides à la ligne " + (cpt + 1),
+				JOptionPane.showMessageDialog(this,
+						"Erreur : certaines cellules sont vides à la ligne " + (cpt + 1),
 						"Erreur de saisie", JOptionPane.ERROR_MESSAGE);
 				continue;
 			}
 
-			String source = valSource.toString().trim();
-			String destination = valDestination.toString().trim();
-			int poid;
+			String source      = valSource.trim();
+			String destination = valDestination.trim();
+			int    poid;
 
 			try
 			{
-				poid = Integer.parseInt(valPoid.toString().trim());
-			} catch (NumberFormatException e)
+				poid = Integer.parseInt(valPoid.trim());
+
+				// Si un poids négatif est détecté, on force Bellman-Ford
+				// car Dijkstra ne supporte pas les poids négatifs
+				if (poid < 0)
+				{
+					this.cbAlgorithme.setSelectedItem("Bellman-Ford");
+					this.cbAlgorithme.setEnabled(false);
+				}
+			}
+			catch (NumberFormatException e)
 			{
 				JOptionPane.showMessageDialog(this,
-						"Erreur : poids invalide à la ligne " + (cpt + 1) + ", valeur = " + valPoid, "Erreur de saisie",
-						JOptionPane.ERROR_MESSAGE);
+						"Erreur : poids invalide à la ligne " + (cpt + 1) + ", valeur = " + valPoid,
+						"Erreur de saisie", JOptionPane.ERROR_MESSAGE);
 				continue;
 			}
 
+			// Ajout de l'arc dans le modèle métier
+			this.controller.ajouterArc(source, destination, poid);
 
-			// Ajouter l'arc
-			controller.ajouterArc(source, destination, poid);
-			if (!estOrienter)
-				controller.ajouterArc(destination, source, poid);
-			
+			// En mode non orienté, on ajoute aussi l'arc dans le sens inverse
+			// En mode non orienté, on ajoute l'arc inverse SAUF si le poids est négatif
+			// car cela créerait un cycle négatif impossible à résoudre
+			if (!estOriente && poid >= 0)
+				this.controller.ajouterArc(destination, source, poid);
 		}
 
-		String pointDepart = (String) cbPointDepart.getSelectedItem();
-		System.out.println(pointDepart);
+		// Lecture du point de départ et de l'algorithme APRÈS la boucle
+		// pour s'assurer que Bellman-Ford a bien été sélectionné si nécessaire
+		String pointDepart = (String) this.cbPointDepart.getSelectedItem();
 
-		String algo = (String)cbAlgorithme.getSelectedItem();
-		int algoInt = 2;
-		
-		if("Dijkstra".equals(algo))
-		{
-			algoInt = 0;
-		}
-		else if ("Bellman-Ford".equals(algo))
-		{
-			algoInt = 1;
-		}
+		String algo    = (String) this.cbAlgorithme.getSelectedItem();
+		int    algoInt = "Dijkstra".equals(algo) ? 0 : 1;
 
-		controller.lancerCalcul(pointDepart, algoInt, estOrienter);
-		this.panelGraphe.afficherGraphes(estOrienter);
+		// Lancement du calcul et affichage du graphe
+		this.controller.lancerCalcul(pointDepart, algoInt, estOriente);
+		this.panelGraphe.afficherGraphes(estOriente);
 	}
 
 	private Set<String> getNoeud()
