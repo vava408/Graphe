@@ -40,6 +40,7 @@ public class PanelTableau extends JPanel
 
         this.table = new JTable(model);
         this.table.setFillsViewportHeight(true);
+        this.table.putClientProperty("terminateEditOnFocusLost", Boolean.TRUE);
         this.add(new JScrollPane(table), BorderLayout.CENTER);
 
         JPanel panelActions = new JPanel(new GridLayout(3, 3, 8, 8));
@@ -138,6 +139,14 @@ public class PanelTableau extends JPanel
 
 	public void creerGraphe()
 	{
+		// Commit any ongoing cell edit before reading values from the model.
+		// Without this, clicking "Calculer" while a cell is still in edit mode
+		// (e.g. after typing a negative weight) would leave the value uncommitted.
+		if (table.isEditing())
+		{
+			table.getCellEditor().stopCellEditing();
+		}
+
 		Set<String> noeud     = getNoeud();
 		List<String> lstNoeud = new ArrayList<>(noeud);
 		boolean estOrienter = this.cbOriente.isSelected();
