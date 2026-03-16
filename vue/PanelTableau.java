@@ -99,8 +99,34 @@ public class PanelTableau extends JPanel
 	private void remplirPointDepart()
 	{
 		Set<String> points = getNoeud();
-
+		this.cbAlgorithme.setEnabled(true);
 		cbPointDepart.removeAllItems();
+
+		for (int cpt = 0; cpt < table.getRowCount(); cpt++)
+		{
+			Object value = table.getValueAt(cpt, 2);
+
+			// ignorer si null ou vide
+			if (value == null || value.toString().trim().isEmpty())
+			{
+				continue;
+			}
+
+			try
+			{
+				int poids = Integer.parseInt(value.toString().trim());
+
+				if (poids < 0)
+				{
+					this.cbAlgorithme.setSelectedItem("Bellman-Ford");
+					this.cbAlgorithme.setEnabled(false);
+					break; // plus besoin de continuer
+				}
+			} catch (NumberFormatException e)
+			{
+				System.out.println("Valeur non numérique à la ligne " + cpt + ": " + value);
+			}
+		}
 
 		for (String p : points)
 		{
