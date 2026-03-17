@@ -5,63 +5,73 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
- * Représente le graphe orienté.
- * Contient tous les noeuds et permet d'ajouter des arcs entre eux.
+ * Représente un graphe — c'est la structure principale de notre appli.
+ * On stocke tous les noeuds dans une Map pour pouvoir les retrouver
+ * rapidement par leur nom (genre graphe.getNoeud("A")).
+ *
+ * On utilise une LinkedHashMap et pas une HashMap classique parce qu'on
+ * veut garder l'ordre dans lequel on a ajouté les noeuds. Ça aide pour
+ * l'affichage et pour les itérations de Bellman-Ford.
  */
-public class Graphe 
+public class Graphe
 {
-
-    // LinkedHashMap pour conserver l'ordre d'insertion
+    // On associe chaque nom de noeud à l'objet Noeud correspondant
     private final Map<String, Noeud> mapNoeuds;
 
-    public Graphe() 
+    public Graphe()
     {
         this.mapNoeuds = new LinkedHashMap<>();
     }
 
     /**
-     * Ajoute un noeud au graphe. Ne fait rien si le nom existe déjà.
+     * Ajoute un noeud dans le graphe.
+     * Si un noeud avec ce nom existe déjà, on ne fait rien (putIfAbsent).
      */
-    public void ajouterNoeud(String nom) 
+    public void ajouterNoeud(String nom)
     {
-        mapNoeuds.putIfAbsent(nom, new Noeud(nom));
+        this.mapNoeuds.putIfAbsent(nom, new Noeud(nom));
     }
 
     /**
-     * Ajoute un arc dirigé entre deux noeuds existants.
-     * @return false si l'un des noeuds n'existe pas
+     * Ajoute un arc orienté entre deux noeuds qui existent déjà.
+     * Si l'un des deux noeuds n'existe pas dans la map, on retourne false.
+     *
+     * @return true si l'arc a bien été ajouté, false sinon
      */
-    public boolean ajouterArc(String nomSource, String nomDestination, int poids) 
+    public boolean ajouterArc(String nomSource, String nomDestination, int poids)
     {
-        Noeud source = mapNoeuds.get(nomSource);
-        Noeud destination = mapNoeuds.get(nomDestination);
+        Noeud source      = this.mapNoeuds.get(nomSource);
+        Noeud destination = this.mapNoeuds.get(nomDestination);
 
-        if (source == null || destination == null) 
-        {
+        // Si l'un des noeuds n'existe pas on ne peut pas créer l'arc
+        if (source == null || destination == null)
             return false;
-        }
 
         source.ajouterArc(destination, poids);
         return true;
     }
 
-    public Noeud getNoeud(String nom) 
+    // Retourne le noeud qui a ce nom, ou null s'il n'existe pas
+    public Noeud getNoeud(String nom)
     {
-        return mapNoeuds.get(nom);
+        return this.mapNoeuds.get(nom);
     }
 
-    public Collection<Noeud> getNoeuds() 
+    // Retourne tous les noeuds du graphe (utile pour les boucles dans les algos)
+    public Collection<Noeud> getNoeuds()
     {
-        return mapNoeuds.values();
+        return this.mapNoeuds.values();
     }
 
-    public boolean contientNoeud(String nom) 
+    // Vérifie si un noeud avec ce nom existe dans le graphe
+    public boolean contientNoeud(String nom)
     {
-        return mapNoeuds.containsKey(nom);
+        return this.mapNoeuds.containsKey(nom);
     }
 
-    public int getNombreNoeuds() 
+    // Retourne le nombre de noeuds — utilisé par Bellman-Ford pour ses (n-1) itérations
+    public int getNombreNoeuds()
     {
-        return mapNoeuds.size();
+        return this.mapNoeuds.size();
     }
 }

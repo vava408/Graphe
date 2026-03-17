@@ -13,39 +13,22 @@ import java.util.Set;
 
 /**
  * Contrôleur principal de l'application.
- *
- * Fait le lien entre la vue (Frame / VueConsole) et le modèle (Graphe + algorithmes).
- * Gère trois modes de fonctionnement :
- *
- *   1. lancerIHM()                → ouvre la fenêtre Swing, résultat affiché selon les options du menu
- *   2. lancerConsole()            → interaction dans le terminal système (System.in / System.out)
- *   3. lancerConsoleTerminal(...) → interaction dans le PanelTerminal intégré à la fenêtre Swing
- *
- * La logique de saisie console est factorisée dans executerFluxConsole()
- * pour éviter toute duplication entre les modes 2 et 3.
  */
 public class Controller implements IController
 {
-    /** Graphe courant sur lequel on travaille. Réinitialisé à chaque creerNoeuds(). */
     private Graphe      graphe;
-
-    /** Algorithme sélectionné pour le calcul en cours. */
     private IAlgorithme algorithme;
+    private Frame       frame;
+    private VueConsole  vueConsole;
+    private Resultat    dernierResultat;
 
-    /** Fenêtre principale — null jusqu'à l'appel de lancerIHM(). */
-    private Frame      frame;
+    // Index du chemin actuellement affiché (pour le bouton "Chemin suivant")
+    private int indexCheminActuel = 0;
 
-    /** Vue console — réinstanciée selon le mode (système ou terminal intégré). */
-    private VueConsole vueConsole;
+    // Liste des noms de noeuds destination dans l'ordre du résultat
+    // (pour naviguer chemin par chemin)
+    private List<String> nomsDestinations = new ArrayList<>();
 
-    /** Dernier résultat calculé, utilisé par la vue graphique pour la mise en évidence. */
-    private Resultat dernierResultat;
-
-    /**
-     * Liste fixe des algorithmes disponibles dans l'application.
-     * Index 0 = Dijkstra, Index 1 = Bellman-Ford.
-     * Correspond aux indices utilisés dans PanelTableau et lancerCalcul().
-     */
     private final List<IAlgorithme> algorithmesDisponibles;
 
     public Controller()
@@ -54,27 +37,18 @@ public class Controller implements IController
         this.vueConsole             = new VueConsole();
         this.dernierResultat        = null;
         this.algorithmesDisponibles = Arrays.asList(new Dijkstra(), new BellmanFord());
-        // Frame intentionnellement non créée ici : elle est créée dans lancerIHM()
     }
 
     // =========================================================================
     // Lancement
     // =========================================================================
 
-    /**
-     * Crée et affiche la fenêtre Swing.
-     * La Frame se charge elle-même d'afficher PanelTableau et PanelGraphe.
-     */
     @Override
     public void lancerIHM()
     {
         this.frame = new Frame(this);
     }
 
-    /**
-     * Lance la saisie interactive en mode console système.
-     * Crée un VueConsole branché sur System.in / System.out.
-     */
     @Override
     public void lancerConsole()
     {
@@ -82,12 +56,6 @@ public class Controller implements IController
         executerFluxConsole(vueConsole);
     }
 
-    /**
-     * Lance la saisie interactive dans le terminal intégré à l'IHM.
-     * Appelé par Frame dans un thread dédié (car readLine() est bloquant).
-     *
-     * @param terminal Le PanelTerminal dans lequel lire et écrire
-     */
     public void lancerConsoleTerminal(PanelTerminal terminal)
     {
         VueConsole vueTerminal = new VueConsole(terminal);
@@ -95,44 +63,26 @@ public class Controller implements IController
     }
 
     // =========================================================================
-    // Flux console commun
+    // Flux console
     // =========================================================================
 
-    /**
-     * Enchaîne toutes les étapes de saisie et de calcul en mode console.
-     * Utilisé aussi bien par lancerConsole() que lancerConsoleTerminal()
-     * pour éviter la duplication de code.
-     *
-     * Étapes :
-     *   1. Choix de l'algorithme
-     *   2. Saisie des noeuds
-     *   3. Graphe orienté ou non
-     *   4. Saisie des arcs
-     *   5. Choix du noeud source + calcul + affichage du résultat
-     *
-     * @param vue La VueConsole à utiliser (système ou terminal intégré)
-     */
     private void executerFluxConsole(VueConsole vue)
     {
-        // --- Étape 1 : choix de l'algorithme ---
         List<String> nomsAlgos = new ArrayList<>();
         for (IAlgorithme algo : algorithmesDisponibles)
             nomsAlgos.add(algo.getNom());
 
         int choix       = vue.demanderChoixAlgorithme(nomsAlgos);
         this.algorithme = algorithmesDisponibles.get(choix);
-        vue.afficherMessage("Algorithme sélectionné : " + algorithme.getNom());
+        vue.afficherMessage("Algorithme sélectionné : " + this.algorithme.getNom());
 
-        // --- Étape 2 : saisie des noeuds ---
         List<String> nomsNoeuds = vue.demanderNoeuds();
         creerNoeuds(nomsNoeuds);
         vue.afficherMessage(nomsNoeuds.size() + " noeud(s) créé(s).");
 
-        // --- Étape 3 : orienté ou non ---
         boolean oriente = vue.demanderSiOriente();
         vue.afficherMessage(oriente ? "Graphe orienté." : "Graphe non-orienté.");
 
-        // --- Étape 4 : saisie des arcs ---
         for (String nomNoeud : nomsNoeuds)
         {
             List<String[]> arcs = vue.demanderArcsPourNoeud(nomNoeud, nomsNoeuds);
@@ -143,9 +93,7 @@ public class Controller implements IController
                 {
                     int poids = Integer.parseInt(arc[1]);
                     ajouterArc(nomNoeud, destination, poids);
-
-                    // Graphe non orienté : on ajoute l'arc dans le sens inverse aussi
-                    if (!oriente)
+                    if (!oriente && poids >= 0)
                         ajouterArc(destination, nomNoeud, poids);
                 }
                 catch (NumberFormatException e)
@@ -155,27 +103,30 @@ public class Controller implements IController
             }
         }
 
-        // --- Étape 5 : calcul et affichage ---
         String   source   = vue.demanderNoeudSource(nomsNoeuds);
-        Resultat resultat = algorithme.calculer(graphe, source);
+        Resultat resultat = this.algorithme.calculer(graphe, source);
 
         if (resultat == null)
         {
-            vue.afficherErreur("Calcul impossible : cycle de poids négatif détecté.");
+            vue.afficherErreur("Erreur inattendue lors du calcul.");
             return;
         }
 
-        vue.afficherResultat(resultat, algorithme.getNom());
+        this.envoyerLogsTerminalAffichage(resultat);
+
+        if (resultat.aUnCircuitAbsorbant())
+        {
+            vue.afficherErreur("Circuit absorbant détecté. Voir le terminal d'affichage.");
+            return;
+        }
+
+        vue.afficherResultat(resultat, this.algorithme.getNom());
     }
 
     // =========================================================================
-    // Opérations sur le graphe — appelées par PanelTableau (mode IHM)
+    // Opérations sur le graphe
     // =========================================================================
 
-    /**
-     * Recrée le graphe depuis zéro avec la liste de noms fournie.
-     * Toute donnée précédente est perdue.
-     */
     @Override
     public void creerNoeuds(List<String> noms)
     {
@@ -184,57 +135,130 @@ public class Controller implements IController
             graphe.ajouterNoeud(nom.trim());
     }
 
-    /**
-     * Ajoute un arc orienté dans le graphe courant.
-     * Les espaces en début/fin de nom sont ignorés.
-     */
     @Override
     public boolean ajouterArc(String nomSource, String nomDestination, int poids)
     {
         return graphe.ajouterArc(nomSource.trim(), nomDestination.trim(), poids);
     }
 
-    /**
-     * Calcule le plus court chemin depuis nomSource et affiche le résultat.
-     * Appelé par PanelTableau quand l'utilisateur clique sur "Calculer".
-     *
-     * Si le graphe est non orienté, les arcs retour sont ajoutés avant le calcul.
-     * Le résultat est transmis à Frame qui l'affiche selon les options du menu.
-     */
     @Override
     public void lancerCalcul(String nomSource, int algorithmeIndex, boolean estOriente)
     {
-        // Vérification de l'index
-        if (algorithmeIndex < 0 || algorithmeIndex >= algorithmesDisponibles.size())
+        if (algorithmeIndex < 0 || algorithmeIndex >= this.algorithmesDisponibles.size())
         {
-            frame.afficherErreur("Index d'algorithme invalide : " + algorithmeIndex);
+            this.frame.afficherErreur("Index d'algorithme invalide : " + algorithmeIndex);
             return;
         }
 
-        this.algorithme = algorithmesDisponibles.get(algorithmeIndex);
+        this.algorithme = this.algorithmesDisponibles.get(algorithmeIndex);
 
-        // Vérification que le noeud source existe dans le graphe
-        if (!graphe.contientNoeud(nomSource))
+        if (!this.graphe.contientNoeud(nomSource))
         {
-            frame.afficherErreur("Le noeud source '" + nomSource + "' n'existe pas.");
+            this.frame.afficherErreur("Le noeud source '" + nomSource + "' n'existe pas.");
             return;
         }
 
-        // Lancement du calcul
-        Resultat resultat = algorithme.calculer(graphe, nomSource);
+        Resultat resultat = this.algorithme.calculer(this.graphe, nomSource);
 
         if (resultat == null)
         {
             this.dernierResultat = null;
-            frame.afficherErreur("Calcul impossible : cycle de poids négatif détecté.");
+            this.frame.afficherErreur("Erreur inattendue lors du calcul.");
+            return;
+        }
+
+        this.envoyerLogsTerminalAffichage(resultat);
+
+        if (resultat.aUnCircuitAbsorbant())
+        {
+            this.dernierResultat = null;
+            this.frame.afficherErreur(
+                "Calcul impossible : circuit absorbant détecté.\n" +
+                "Voir le terminal d'affichage pour le détail."
+            );
             return;
         }
 
         this.dernierResultat = resultat;
 
-        // Transmission du résultat à la Frame — c'est elle qui décide comment l'afficher
-        frame.afficherResultat(resultat, algorithme.getNom());
+        // On prépare la liste des destinations pour la navigation chemin par chemin
+        // On ignore la source elle-même (chemin vide)
+        this.nomsDestinations = new ArrayList<>();
+        for (String nom : resultat.getDistances().keySet())
+        {
+            List<String> chemin = resultat.getChemin(nom);
+            if (chemin != null && chemin.size() >= 2)
+                this.nomsDestinations.add(nom);
+        }
+
+        // On repart toujours du premier chemin après un nouveau calcul
+        this.indexCheminActuel = 0;
+
+        this.frame.afficherResultat(resultat, this.algorithme.getNom());
     }
+
+    /**
+     * Passe au chemin suivant dans la liste et demande au panel graphe de l'afficher.
+     * Appelé par PanelTableau quand l'utilisateur clique sur "Chemin suivant".
+     *
+     * @param estOriente pour savoir comment dessiner les arcs
+     * @param destination si non null, on affiche uniquement ce chemin précis
+     */
+    public void afficherCheminSuivant(boolean estOriente, String destination)
+    {
+        if (this.dernierResultat == null) return;
+
+        // Cas avec point d'arrivée choisi : on affiche juste ce chemin
+        if (destination != null && !destination.isEmpty())
+        {
+            this.frame.demanderAffichageChemin(
+                this.dernierResultat.getChemin(destination),
+                0,
+                estOriente
+            );
+            return;
+        }
+
+        // Cas sans point d'arrivée : on navigue chemin par chemin
+        if (this.nomsDestinations.isEmpty()) return;
+
+        String nomDest = this.nomsDestinations.get(this.indexCheminActuel);
+        List<String> chemin = this.dernierResultat.getChemin(nomDest);
+
+        // On envoie l'index pour la couleur et le numéro du chemin
+        this.frame.demanderAffichageChemin(chemin, this.indexCheminActuel, estOriente);
+
+        // On passe au chemin suivant (boucle sur la liste)
+        this.indexCheminActuel = (this.indexCheminActuel + 1) % this.nomsDestinations.size();
+    }
+
+    /**
+     * Retourne le nombre total de chemins disponibles.
+     * Utilisé par PanelTableau pour afficher "Chemin X / Y" sur le bouton.
+     */
+    public int getNombreChemins()
+    {
+        return this.nomsDestinations.size();
+    }
+
+    /**
+     * Retourne l'index du chemin actuellement affiché.
+     */
+    public int getIndexCheminActuel()
+    {
+        return this.indexCheminActuel;
+    }
+
+    private void envoyerLogsTerminalAffichage(Resultat resultat)
+    {
+        if (this.frame != null)
+            this.frame.afficherLogsTerminal(resultat.getLogs());
+    }
+
+    // =========================================================================
+    // Getters pour PanelGraphe
+    // =========================================================================
+
     public List<String> getNomsNoeuds()
     {
         List<String> noms = new ArrayList<>();
@@ -246,7 +270,6 @@ public class Controller implements IController
     public List<String[]> getArcsPourAffichage()
     {
         List<String[]> arcs = new ArrayList<>();
-
         for (Noeud source : this.graphe.getNoeuds())
         {
             for (Arc arc : source.getArcsSortants())
@@ -259,30 +282,22 @@ public class Controller implements IController
                 });
             }
         }
-
         return arcs;
     }
 
     public Set<String> getArcsPlusCourtsChemins()
     {
         Set<String> arcs = new HashSet<>();
-
-        if (this.dernierResultat == null)
-            return arcs;
+        if (this.dernierResultat == null) return arcs;
 
         for (String nomNoeud : this.dernierResultat.getDistances().keySet())
         {
             List<String> chemin = this.dernierResultat.getChemin(nomNoeud);
-            if (chemin == null || chemin.size() < 2)
-                continue;
+            if (chemin == null || chemin.size() < 2) continue;
 
             for (int i = 0; i < chemin.size() - 1; i++)
-            {
                 arcs.add(chemin.get(i) + "->" + chemin.get(i + 1));
-            }
         }
-
         return arcs;
     }
-
 }

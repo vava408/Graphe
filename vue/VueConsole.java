@@ -5,36 +5,29 @@ import metier.Resultat;
 import java.util.*;
 
 /**
- * Vue console de l'application.
+ * Gère toute l'interaction texte avec l'utilisateur.
  *
- * Gère toute l'interaction texte avec l'utilisateur : affichage de messages,
- * saisie des noeuds, des arcs, du noeud source, et affichage du résultat final.
- *
- * Fonctionne dans deux modes selon le constructeur utilisé :
+ * Elle fonctionne dans deux modes selon le constructeur utilisé :
  *
  *   new VueConsole()
  *     => Mode console système : lit sur System.in, écrit sur System.out.
- *       Utilisé quand l'application est lancée avec l'argument "console".
+ *        Utilisé quand on lance l'application avec l'argument "console".
  *
  *   new VueConsole(PanelTerminal)
  *     => Mode terminal intégré : lit et écrit dans le PanelTerminal Swing.
- *       Utilisé quand l'utilisateur coche "Terminal intégré" dans le menu Options.
+ *        Utilisé quand on coche "Terminal de saisie" dans le menu.
  *
- * Les méthodes privées print(), println() et nextLine() abstraient la différence
- * entre les deux modes : tout le reste du code est identique.
+ * Les méthodes privées print(), println() et nextLine() cachent la différence
+ * entre les deux modes => tout le reste du code est identique dans les deux cas.
  */
 public class VueConsole
 {
-    /**
-     * Scanner sur System.in — utilisé uniquement en mode console système.
-     * null en mode terminal intégré.
-     */
+    // Le scanner sur System.in, utilisé uniquement en mode console système
+    // null en mode terminal intégré
     private final Scanner       scanner;
 
-    /**
-     * Terminal Swing intégré — utilisé uniquement en mode terminal intégré.
-     * null en mode console système.
-     */
+    // Le terminal Swing, utilisé uniquement en mode terminal intégré
+    // null en mode console système
     private final PanelTerminal terminal;
 
     // =========================================================================
@@ -42,9 +35,7 @@ public class VueConsole
     // =========================================================================
 
     /**
-     * Mode console système.
-     * Lit sur System.in et écrit sur System.out / System.err.
-     * Sans terminal intégré, elle lit/écrit dans le vrai terminal système
+     * Mode console système => lit/écrit dans le vrai terminal.
      */
     public VueConsole()
     {
@@ -53,12 +44,9 @@ public class VueConsole
     }
 
     /**
-     * Mode terminal intégré dans l'IHM Swing.
-     * Toutes les entrées/sorties passent par le PanelTerminal fourni.
-     * 
-     * Enn claire => Avec terminal intégré, elle doit lire/écrire dans le PanelTerminal Swing 
+     * Mode terminal intégré => lit/écrit dans le PanelTerminal Swing.
      *
-     * @param terminal Le terminal Swing dans lequel lire et écrire
+     * @param terminal => le panel terminal dans lequel on va lire et écrire
      */
     public VueConsole(PanelTerminal terminal)
     {
@@ -67,41 +55,34 @@ public class VueConsole
     }
 
     // =========================================================================
-    // Méthodes d'entrée/sortie internes (abstraction des deux modes)
+    // Méthodes internes (abstraction des deux modes)
     // =========================================================================
 
-    /**
-     * Écrit du texte sans saut de ligne (utilisé pour les prompts).
-     */
+    // Écrit du texte sans saut de ligne (pour les prompts)
     private void print(String texte)
     {
-        if (terminal != null)
-            terminal.afficher(texte);
+        if (this.terminal != null)
+            this.terminal.afficher(texte);
         else
             System.out.print(texte);
     }
 
-    /**
-     * Écrit une ligne avec saut de ligne.
-     */
+    // Écrit une ligne avec saut de ligne
     private void println(String texte)
     {
-        if (terminal != null)
-            terminal.afficherLigne(texte);
+        if (this.terminal != null)
+            this.terminal.afficherLigne(texte);
         else
             System.out.println(texte);
     }
 
-    /**
-     * Lit une ligne saisie par l'utilisateur.
-     * Bloquant dans les deux modes : attend que l'utilisateur appuie sur Entrée.
-     */
+    // Lit une ligne saisie par l'utilisateur (bloquant dans les deux modes)
     private String nextLine()
     {
-        if (terminal != null)
-            return terminal.readLine();
+        if (this.terminal != null)
+            return this.terminal.readLine();
         else
-            return scanner.nextLine().trim();
+            return this.scanner.nextLine().trim();
     }
 
     // =========================================================================
@@ -110,22 +91,18 @@ public class VueConsole
 
     /**
      * Affiche un message d'information préfixé par [INFO].
-     *
-     * @param message Le message à afficher
      */
     public void afficherMessage(String message)
     {
-        println("[INFO] " + message);
+        this.println("[INFO] " + message);
     }
 
     /**
      * Affiche un message d'erreur préfixé par [ERREUR].
-     *
-     * @param erreur Le message d'erreur à afficher
      */
     public void afficherErreur(String erreur)
     {
-        println("[ERREUR] " + erreur);
+        this.println("[ERREUR] " + erreur);
     }
 
     // =========================================================================
@@ -133,61 +110,61 @@ public class VueConsole
     // =========================================================================
 
     /**
-     * Affiche la liste des algorithmes disponibles et demande à l'utilisateur
-     * d'en choisir un par son numéro.
+     * Affiche la liste des algorithmes et demande à l'utilisateur d'en choisir un.
      *
-     * @param algorithmes Liste des noms d'algorithmes à proposer
-     * @return L'index (0-based) de l'algorithme choisi
+     * @param algorithmes => la liste des noms à proposer
+     * @return l'index (0-based) de l'algorithme choisi
      */
     public int demanderChoixAlgorithme(List<String> algorithmes)
     {
-        println("\n=== Choix de l'algorithme ===");
+        this.println("\n=== Choix de l'algorithme ===");
         for (int i = 0; i < algorithmes.size(); i++)
-            println("  " + (i + 1) + ". " + algorithmes.get(i));
+            this.println("  " + (i + 1) + ". " + algorithmes.get(i));
 
         int choix = -1;
         while (choix < 0 || choix >= algorithmes.size())
         {
-            print("Votre choix (1-" + algorithmes.size() + ") : ");
+            this.print("Votre choix (1-" + algorithmes.size() + ") : ");
             try
             {
-                choix = Integer.parseInt(nextLine()) - 1;
+                choix = Integer.parseInt(this.nextLine()) - 1;
                 if (choix < 0 || choix >= algorithmes.size())
-                    println("Choix invalide, réessayez.");
+                    this.println("Choix invalide, réessayez.");
             }
             catch (NumberFormatException e)
             {
-                println("Veuillez entrer un nombre.");
+                this.println("Veuillez entrer un nombre.");
             }
         }
         return choix;
     }
 
     /**
-     * Demande la liste des noms de noeuds séparés par des virgules.
+     * Demande à l'utilisateur de saisir les noeuds séparés par des virgules.
      * Propose une confirmation et recommence si l'utilisateur répond "n".
      *
-     * @return Liste non vide des noms de noeuds confirmés
+     * @return la liste des noms de noeuds confirmée
      */
     public List<String> demanderNoeuds()
     {
-        println("\n=== Saisie des noeuds ===");
-        print("Noms séparés par des virgules (ex: A,B,C) : ");
+        this.println("\n=== Saisie des noeuds ===");
+        this.print("Noms séparés par des virgules (ex: A,B,C) : ");
 
-        String[] parts = nextLine().split(",");
+        String[]     parts  = this.nextLine().split(",");
         List<String> noeuds = new ArrayList<>();
+
         for (String part : parts)
         {
             String nom = part.trim();
             if (!nom.isEmpty()) noeuds.add(nom);
         }
 
-        println("Noeuds saisis : " + noeuds);
-        print("Confirmer ? (o/n) : ");
+        this.println("Noeuds saisis : " + noeuds);
+        this.print("Confirmer ? (o/n) : ");
 
-        // Récursion si l'utilisateur veut recommencer
-        if (nextLine().equalsIgnoreCase("n"))
-            return demanderNoeuds();
+        // Si l'utilisateur répond "n", on recommence depuis le début (récursion)
+        if (this.nextLine().equalsIgnoreCase("n"))
+            return this.demanderNoeuds();
 
         return noeuds;
     }
@@ -195,60 +172,62 @@ public class VueConsole
     /**
      * Demande si le graphe est orienté ou non.
      *
-     * @return true = orienté, false = non orienté
+     * @return true si orienté, false sinon
      */
     public boolean demanderSiOriente()
     {
-        print("\nGraphe orienté ? (o/n) : ");
-        return nextLine().equalsIgnoreCase("o");
+        this.print("\nGraphe orienté ? (o/n) : ");
+        return this.nextLine().equalsIgnoreCase("o");
     }
 
     /**
      * Demande les arcs sortants pour un noeud donné.
-     * L'utilisateur saisit une destination et un poids, puis "fin" pour terminer.
+     * L'utilisateur entre une destination et un poids, puis "fin" pour terminer.
      *
-     * @param nomNoeud     Le noeud source dont on saisit les arcs
-     * @param noeudsDispos Les noeuds vers lesquels un arc est autorisé
-     * @return Liste de tableaux [nomDestination, poids] sous forme de String[]
+     * @param nomNoeud     => le noeud source dont on saisit les arcs
+     * @param noeudsDispos => les noeuds vers lesquels un arc est autorisé
+     * @return la liste des arcs sous forme de String[] {destination, poids}
      */
     public List<String[]> demanderArcsPourNoeud(String nomNoeud, List<String> noeudsDispos)
     {
-        println("\n=== Arcs sortants de " + nomNoeud + " ===");
-        println("Noeuds disponibles : " + noeudsDispos);
-        println("(Tapez 'fin' pour passer au noeud suivant)");
+        this.println("\n=== Arcs sortants de " + nomNoeud + " ===");
+        this.println("Noeuds disponibles : " + noeudsDispos);
+        this.println("(Tapez 'fin' pour passer au noeud suivant)");
 
         List<String[]> lstArcs = new ArrayList<>();
 
         while (true)
         {
-            print("  Destination depuis " + nomNoeud + " (ou 'fin') : ");
-            String destination = nextLine();
+            this.print("  Destination depuis " + nomNoeud + " (ou 'fin') : ");
+            String destination = this.nextLine();
 
             if (destination.equalsIgnoreCase("fin")) break;
 
             if (!noeudsDispos.contains(destination))
             {
-                println("  Noeud inconnu. Choisissez parmi : " + noeudsDispos);
+                this.println("  Noeud inconnu. Choisissez parmi : " + noeudsDispos);
                 continue;
             }
             if (destination.equals(nomNoeud))
             {
-                println("  Arc vers soi-même ignoré.");
+                this.println("  Arc vers soi-même ignoré.");
                 continue;
             }
 
-            print("  Poids de l'arc " + nomNoeud + " -> " + destination + " : ");
-            String poids = nextLine();
+            this.print("  Poids de l'arc " + nomNoeud + " -> " + destination + " : ");
+            String poids = this.nextLine();
 
             try
             {
-                Integer.parseInt(poids); // validation — exception si non numérique
+                // On vérifie que le poids est bien un entier (peut être négatif)
+                Integer.parseInt(poids);
                 lstArcs.add(new String[]{destination, poids});
-                println("  Arc ajouté : " + nomNoeud + " -> " + destination + " (poids: " + poids + ")");
+                this.println("  Arc ajouté : " + nomNoeud + " -> " + destination
+                        + " (poids: " + poids + ")");
             }
             catch (NumberFormatException e)
             {
-                println("  Poids invalide, arc ignoré.");
+                this.println("  Poids invalide, arc ignoré.");
             }
         }
 
@@ -258,21 +237,21 @@ public class VueConsole
     /**
      * Demande le noeud de départ pour le calcul parmi les noeuds disponibles.
      *
-     * @param noeudsDispos Liste des noeuds existants dans le graphe
-     * @return Le nom du noeud source choisi
+     * @param noeudsDispos => la liste des noeuds existants dans le graphe
+     * @return le nom du noeud source choisi
      */
     public String demanderNoeudSource(List<String> noeudsDispos)
     {
-        println("\n=== Noeud source ===");
-        println("Noeuds disponibles : " + noeudsDispos);
+        this.println("\n=== Noeud source ===");
+        this.println("Noeuds disponibles : " + noeudsDispos);
 
         String source = "";
         while (!noeudsDispos.contains(source))
         {
-            print("Noeud de départ : ");
-            source = nextLine();
+            this.print("Noeud de départ : ");
+            source = this.nextLine();
             if (!noeudsDispos.contains(source))
-                println("Noeud inconnu, réessayez.");
+                this.println("Noeud inconnu, réessayez.");
         }
         return source;
     }
@@ -282,20 +261,19 @@ public class VueConsole
     // =========================================================================
 
     /**
-     * Affiche le tableau des résultats : pour chaque noeud, sa distance minimale
-     * depuis la source et le chemin emprunté.
+     * Affiche un tableau récapitulatif avec les distances et chemins trouvés.
      *
-     * @param resultat Le résultat produit par l'algorithme
-     * @param nomAlgo  Le nom de l'algorithme utilisé (pour l'en-tête)
+     * @param resultat => le résultat produit par l'algorithme
+     * @param nomAlgo  => le nom de l'algorithme utilisé pour l'en-tête
      */
     public void afficherResultat(Resultat resultat, String nomAlgo)
     {
-        println("\n========================================");
-        println("  Résultats - " + nomAlgo);
-        println("  Source : " + resultat.getNomSource());
-        println("========================================");
-        println(String.format("%-10s %-10s %s", "Noeud", "Distance", "Chemin"));
-        println("----------------------------------------");
+        this.println("\n========================================");
+        this.println("  Résultats - " + nomAlgo);
+        this.println("  Source : " + resultat.getNomSource());
+        this.println("========================================");
+        this.println(String.format("%-10s %-10s %s", "Noeud", "Distance", "Chemin"));
+        this.println("----------------------------------------");
 
         for (Map.Entry<String, Integer> entry : resultat.getDistances().entrySet())
         {
@@ -303,14 +281,14 @@ public class VueConsole
             int          dist   = entry.getValue();
             List<String> chemin = resultat.getChemin(nom);
 
-            // Integer.MAX_VALUE représente "infini" (noeud inaccessible)
+            // Integer.MAX_VALUE = noeud inaccessible => on affiche ∞
             String distStr   = (dist == Integer.MAX_VALUE) ? "∞" : String.valueOf(dist);
             String cheminStr = (chemin == null || chemin.isEmpty())
                                ? "Inaccessible"
                                : String.join(" -> ", chemin);
 
-            println(String.format("%-10s %-10s %s", nom, distStr, cheminStr));
+            this.println(String.format("%-10s %-10s %s", nom, distStr, cheminStr));
         }
-        println("========================================");
+        this.println("========================================");
     }
 }

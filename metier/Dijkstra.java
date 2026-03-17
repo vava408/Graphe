@@ -4,112 +4,163 @@ import java.util.*;
 
 /**
  * Implémentation de l'algorithme de Dijkstra.
- * Fonctionne sur les graphes à poids positifs uniquement.
+ *
+ * Le principe : à chaque étape, on choisit le noeud non encore traité
+ * qui a la plus petite distance connue depuis la source. On regarde ensuite
+ * tous ses voisins et on met à jour leurs distances si on trouve mieux.
+ * Une fois un noeud traité, sa distance est définitive (on n'y revient plus).
+ *
+ * C'est pour ça qu'on utilise une PriorityQueue (file de priorité) :
+ * elle nous donne toujours le noeud avec la plus petite distance en premier.
+ *
+ * Pourquoi ça ne marche pas avec les poids négatifs ?
+ * Parce qu'on suppose que quand on sort un noeud de la file, sa distance
+ * est définitive. Avec des poids négatifs, un arc ultérieur pourrait
+ * encore améliorer cette distance — l'hypothèse de base ne tient plus.
  */
-public class Dijkstra implements IAlgorithme 
- {
-
-
-    public String getNom() 
+public class Dijkstra implements IAlgorithme
+{
+    public String getNom()
     {
         return "Dijkstra";
     }
 
-
-    public Resultat calculer(Graphe graphe, String nomSource) 
+    public Resultat calculer(Graphe graphe, String nomSource)
     {
         Noeud source = graphe.getNoeud(nomSource);
         if (source == null) return null;
 
         Resultat resultat = new Resultat(nomSource);
 
-        // Distance de chaque noeud (infini au départ)
-        Map<String, Integer> dist = new HashMap<>();
-        // Prédécesseur de chaque noeud (pour reconstruire le chemin)
-        Map<String, String> predecesseur = new HashMap<>();
-        // Noeuds déjà traités
-        Set<String> visite = new HashSet<>();
+        // Distance minimale connue pour chaque noeud
+        Map<String, Integer> dist         = new HashMap<>();
+        // Le noeud par lequel on est passé pour arriver à chaque noeud
+        Map<String, String>  predecesseur = new HashMap<>();
+        // Les noeuds dont la distance est définitive (déjà traités)
+        Set<String>          visite       = new HashSet<>();
 
-        // Initialisation : tous à +infini sauf la source
-        for (Noeud n : graphe.getNoeuds()) 
+        // --- Initialisation ---
+        // Tout le monde à l'infini sauf la source à 0
+        for (Noeud noeud : graphe.getNoeuds())
         {
-            dist.put(n.getNom(), Integer.MAX_VALUE);
-            predecesseur.put(n.getNom(), null);
+            dist.put(noeud.getNom(), Integer.MAX_VALUE);
+            predecesseur.put(noeud.getNom(), null);
         }
         dist.put(nomSource, 0);
 
-        // File de priorité : traite d'abord le noeud avec la plus petite distance
-        // Entry : (distance, nomNoeud)
-        PriorityQueue<int[]> file = new PriorityQueue<>(Comparator.comparingInt(e -> e[0]));
-        // On utilise un Map<nom, index> pour simplifier : on stocke (dist, hash du nom)
-        // Approche simple : stocker le nom dans une liste parallèle
-        Map<Integer, String> indexNom = new HashMap<>();
+        resultat.ajouterLog("=== Initialisation ===");
+        resultat.ajouterLog(this.distancesEnLigne(dist, visite, graphe));
+        resultat.ajouterLog("");
 
-        // On utilise une PriorityQueue de String[] {distStr, nom} — plus lisible
+        // File de priorité : on traite toujours le noeud avec la plus petite distance
+        // Chaque élément est un tableau {distance, nomNoeud}
         PriorityQueue<String[]> pq = new PriorityQueue<>(
             Comparator.comparingInt(e -> Integer.parseInt(e[0]))
         );
         pq.offer(new String[]{"0", nomSource});
 
-        while (!pq.isEmpty()) 
-        {
-            String[] courant = pq.poll();
-            int distCourante = Integer.parseInt(courant[0]);
-            String nomCourant = courant[1];
+        int etape = 1;
 
-            // Si déjà visité, on ignore (entrée obsolète dans la PQ)
+        while (!pq.isEmpty())
+        {
+            String[] courant      = pq.poll();
+            int      distCourante = Integer.parseInt(courant[0]);
+            String   nomCourant   = courant[1];
+
+            // Si déjà visité, c'est une entrée obsolète dans la file — on ignore
             if (visite.contains(nomCourant)) continue;
             visite.add(nomCourant);
 
+            resultat.ajouterLog("--- Étape " + etape + " : " + nomCourant
+                    + " (dist=" + distCourante + ", définitif) ---");
+
             Noeud noeudCourant = graphe.getNoeud(nomCourant);
 
-            // Relaxation de chaque arc sortant
-            for (Arc arc : noeudCourant.getArcsSortants()) 
+            // On regarde tous les voisins et on essaie d'améliorer leurs distances
+            for (Arc arc : noeudCourant.getArcsSortants())
             {
-                String nomVoisin = arc.getDestination().getNom();
+                String nomVoisin        = arc.getDestination().getNom();
+                int    distActuelle     = dist.get(nomVoisin);
+                int    nouvelleDistance = distCourante + arc.getPoids();
+
+                // Un noeud déjà visité a une distance définitive, on ne le retouche pas
                 if (visite.contains(nomVoisin)) continue;
 
-                int nouvelleDistance = distCourante + arc.getPoids();
-                if (nouvelleDistance < dist.get(nomVoisin)) 
+                String avant = (distActuelle == Integer.MAX_VALUE)
+                               ? "∞" : String.valueOf(distActuelle);
+
+                if (nouvelleDistance < distActuelle)
                 {
                     dist.put(nomVoisin, nouvelleDistance);
                     predecesseur.put(nomVoisin, nomCourant);
+                    // On remet le voisin dans la file avec sa nouvelle distance
                     pq.offer(new String[]{String.valueOf(nouvelleDistance), nomVoisin});
+                    resultat.ajouterLog("  " + nomCourant + "->" + nomVoisin
+                            + " (" + arc.getPoids() + ")"
+                            + "  " + avant + " => " + nouvelleDistance + "  ✓");
                 }
             }
+
+            // État des distances après cette étape
+            // Les noeuds marqués * ont une distance définitive
+            resultat.ajouterLog("  " + this.distancesEnLigne(dist, visite, graphe));
+            resultat.ajouterLog("");
+
+            etape++;
         }
 
-        // Construction du résultat final
-        for (Noeud n : graphe.getNoeuds()) 
+        resultat.ajouterLog("=== Terminé ===");
+        resultat.ajouterLog(this.distancesEnLigne(dist, visite, graphe));
+
+        // --- Construction du résultat final ---
+        for (Noeud noeud : graphe.getNoeuds())
         {
-            String nom = n.getNom();
+            String nom = noeud.getNom();
             resultat.setDistance(nom, dist.get(nom));
-            resultat.setChemin(nom, reconstruireChemin(predecesseur, nomSource, nom));
+            resultat.setChemin(nom, this.reconstruireChemin(predecesseur, nomSource, nom));
         }
 
         return resultat;
     }
 
     /**
-     * Remonte les prédécesseurs pour reconstruire le chemin source -> destination.
+     * Affiche toutes les distances sur une ligne.
+     * Les noeuds avec une distance définitive sont marqués avec *.
+     * Ex : "A=0*  B=12*  C=27  E=∞"
+     */
+    private String distancesEnLigne(Map<String, Integer> dist,
+                                     Set<String> visite, Graphe graphe)
+    {
+        StringBuilder sb = new StringBuilder();
+        for (Noeud noeud : graphe.getNoeuds())
+        {
+            String nom     = noeud.getNom();
+            String distStr = (dist.get(nom) == Integer.MAX_VALUE)
+                             ? "∞" : String.valueOf(dist.get(nom));
+            String marque  = visite.contains(nom) ? "*" : "";
+            sb.append(nom).append("=").append(distStr).append(marque).append("  ");
+        }
+        return sb.toString().trim();
+    }
+
+    /**
+     * Remonte les prédécesseurs pour reconstruire le chemin complet
+     * de la source jusqu'à la destination.
      */
     private List<String> reconstruireChemin(Map<String, String> predecesseur,
-                                             String source, String destination) 
+                                             String source, String destination)
     {
-        List<String> chemin = new ArrayList<>();
-        String courant = destination;
+        List<String> chemin  = new ArrayList<>();
+        String       courant = destination;
 
-        while (courant != null) 
+        while (courant != null)
         {
             chemin.add(0, courant);
             courant = predecesseur.get(courant);
         }
 
-        // Si le chemin ne commence pas par la source, c'est inatteignable
-        if (chemin.isEmpty() || !chemin.get(0).equals(source)) 
-        {
+        if (chemin.isEmpty() || !chemin.get(0).equals(source))
             return Collections.emptyList();
-        }
 
         return chemin;
     }

@@ -4,42 +4,47 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Représente un sommet (noeud) du graphe.
- * Chaque noeud a un nom et une liste d'arcs sortants.
+ * Représente un sommet du graphe.
+ * Chaque noeud a un nom (ex: "A") et une liste des arcs qui en partent.
+ * C'est une liste d'adjacence : pour savoir où on peut aller depuis A,
+ * on regarde la liste arcsSortants de A.
  */
-public class Noeud 
+public class Noeud
 {
+    // Le nom du noeud (ex: "A", "Paris", etc.)
+    private final String     nom;
 
-    private final String nom;
-    private final List<Arc> arcsSortants;
+    // La liste de tous les arcs qui partent de ce noeud
+    private final List<Arc>  arcsSortants;
 
-    public Noeud(String nom) 
+    public Noeud(String nom)
     {
-        this.nom = nom;
+        this.nom          = nom;
         this.arcsSortants = new ArrayList<>();
     }
 
     /**
-     * Ajoute un arc sortant vers un noeud destination avec un poids donné.
+     * Ajoute un arc sortant vers un autre noeud avec un poids donné.
+     * Appelé depuis Graphe.ajouterArc().
      */
-    public void ajouterArc(Noeud destination, int poids) 
+    public void ajouterArc(Noeud destination, int poids)
     {
         this.arcsSortants.add(new Arc(destination, poids));
     }
 
-    public String getNom() 
+    public String getNom()
     {
         return this.nom;
     }
 
-    public List<Arc> getArcsSortants() 
+    public List<Arc> getArcsSortants()
     {
         return this.arcsSortants;
     }
 
     @Override
-    public String toString() 
+    public String toString()
     {
-        return "Noeud(" + nom + ")";
+        return "Noeud(" + this.nom + ")";
     }
 }
